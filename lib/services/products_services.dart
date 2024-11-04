@@ -2,10 +2,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:velocityestoque/baseConect.dart';
 import 'package:velocityestoque/models/product_model.dart';
-
-import '../models/movimentacao_model.dart';
+import 'package:velocityestoque/models/movimentacao_model.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 
 class ProductServices {
+  final WebSocketChannel channel;
+
+  ProductServices(String socketUrl)
+      : channel = IOWebSocketChannel.connect(socketUrl);
+
   // Função para buscar as categorias
   Future<List<Map<String, dynamic>>> fetchCategories() async {
     final url = '${Config.apiUrl}/api/categories';
@@ -54,7 +60,6 @@ class ProductServices {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> productData = jsonDecode(response.body);
-        // Mapeia os dados JSON para uma lista de objetos Product usando fromJson
         return productData.map((json) => Product.fromJson(json)).toList();
       } else {
         throw Exception('Erro ao buscar produtos: ${response.statusCode}');
@@ -66,16 +71,14 @@ class ProductServices {
   }
 
   // Função para buscar o histórico de movimentações de um membro específico
-  // Função para buscar o histórico de movimentações de um membro específico
   Future<List<MovimentacaoModel>> fetchMemberHistory(String memberId) async {
-    final url = '${Config.apiUrl}/api//historico-movimentacoes/$memberId';
+    final url = '${Config.apiUrl}/api/historico-movimentacoes/$memberId';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         print(response.body);
         final List<dynamic> data = jsonDecode(response.body);
-        // Mapeia os dados JSON diretamente para uma lista de MovimentacaoModel usando fromJson
         return data.map((json) => MovimentacaoModel.fromJson(json)).toList();
       } else {
         throw Exception('Falha ao carregar histórico de movimentações');
@@ -87,24 +90,36 @@ class ProductServices {
   }
 
   // Função para submeter o produto
-  // Função para enviar o produto cadastrado para a API
   Future<void> submitProduct(String name, int quantity, String categoryId,
       String description, String unit, String userId, String marca) async {
     final url = '${Config.apiUrl}/api/products';
     final Map<String, dynamic> productData = {
       'name': name,
       'quantity': quantity,
-      'category': categoryId, // Passando o ID da categoria
+      'category': categoryId,
       'description': description,
       'unit': unit,
       'marca': marca,
       'usuarioId': userId
     };
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(productData),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Erro ao cadastrar produto: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Erro: $error');
+    }
   }
 
   // Método para atualizar quantidade de produtos novos
-  Future<void> updateNewProductQuantity(
-      String productId, int quantity, String userId) async {
+  Future<void> updateNewProductQuantity(String productId, int quantity,
+      String userId, String movementacao) async {
     final url = '${Config.apiUrl}/api/products/$productId/novo';
 
     try {
@@ -113,8 +128,8 @@ class ProductServices {
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          'conditionQuantities': {'new': quantity}, // Atualização aqui
-          'tipoMovimentacao': 'ENTRADA',
+          'conditionQuantities': {'new': quantity},
+          'tipoMovimentacao': movementacao,
           'usuario': userId
         }),
       );
@@ -130,8 +145,8 @@ class ProductServices {
   }
 
   // Método para atualizar quantidade de produtos usados
-  Future<void> updateUsedProductQuantity(
-      String productId, int quantity, String userId) async {
+  Future<void> updateUsedProductQuantity(String productId, int quantity,
+      String userId, String movementacao) async {
     final url = '${Config.apiUrl}/api/products/$productId/usado';
     try {
       final response = await http.put(
@@ -139,7 +154,7 @@ class ProductServices {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'conditionQuantities': {'used': quantity},
-          'tipoMovimentacao': 'ENTRADA',
+          'tipoMovimentacao': movementacao,
           'usuario': userId
         }),
       );
@@ -155,17 +170,17 @@ class ProductServices {
   }
 
   // Método para atualizar quantidade de produtos danificados
-  Future<void> updateDamagedProductQuantity(
-      String productId, int quantity, String userId) async {
+  Future<void> updateDamagedProductQuantity(String productId, int quantity,
+      String userId, String movementacao) async {
     final url = '${Config.apiUrl}/api/products/$productId/danificado';
     try {
       final response = await http.put(
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          'conditionQuantities': {'damaged': quantity}, // Atualização aqui
-          'tipoMovimentacao': 'ENTRADA',
-          'usuario': userId
+          'conditionQuantities': {'damaged': quantity},
+          'tipoMovimentacao': movementacao,
+          'usuario': userId,
         }),
       );
       if (response.statusCode == 200) {
@@ -177,5 +192,21 @@ class ProductServices {
     } catch (error) {
       print('Erro: $error');
     }
+  }
+
+  // Método para escutar mensagens do WebSocket
+  void listenToMessages(Function(String message) onMessage) {
+    channel.stream.listen((message) {
+      onMessage(message);
+    }, onError: (error) {
+      print('Erro no WebSocket: $error');
+    }, onDone: () {
+      print('WebSocket desconectado');
+    });
+  }
+
+  // Método para fechar o WebSocket
+  void dispose() {
+    channel.sink.close();
   }
 }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:velocityestoque/models/marcas_model.dart';
 import 'package:velocityestoque/screens/historic_products.dart';
 import 'package:velocityestoque/services/products_services.dart';
+import 'package:velocityestoque/widgets/add_member_products.dart';
 
 import '../models/member_model.dart';
 
@@ -22,7 +23,8 @@ class AlertDialogProduct extends StatefulWidget {
 
 class _AlertDialogProductState extends State<AlertDialogProduct> {
   List<Map<String, dynamic>> _categories = []; // Mapeia categorias
-  final ProductServices _productServices = ProductServices();
+  final ProductServices _productServices =
+      ProductServices('ws://192.168.99.239:3000');
   String? selectedCategory;
   List<MovimentacaoModel> products = [];
   List<MovimentacaoModel> filteredProducts = [];
@@ -238,7 +240,16 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                           text: "Adicionar produto",
                           icon: Icons.add_circle_outline,
                           color: Color(0xffFEB100),
-                          ontap: () {},
+                          ontap: () {
+                            showDialog(
+                                barrierColor: Colors.transparent,
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AddMemberProducts(
+                                    membro: widget.membro,
+                                  );
+                                });
+                          },
                         ),
                         SizedBox(
                           width: 10.sp,

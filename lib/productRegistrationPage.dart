@@ -27,7 +27,8 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
   List<Map<String, dynamic>> _marcas = []; // Mapeia marcas
   List<Map<String, dynamic>> _categories = []; // Mapeia categorias
   final List<String> _units = ['Unidade', 'Kg', 'Litros', 'Caixas'];
-  final ProductServices _productServices = ProductServices();
+  final ProductServices _productServices =
+      ProductServices('ws://192.168.99.239:3000');
 
   @override
   void initState() {

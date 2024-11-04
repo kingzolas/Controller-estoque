@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:velocityestoque/widgets/cardProduct.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../baseConect.dart';
+import '../services/products_services.dart';
 import '../websocket_service.dart';
 import '../models/product_model.dart';
 import '../models/user_model.dart';
@@ -22,12 +23,23 @@ class _ProductListingPageState extends State<ProductListingPage> {
   String? selectedCategory;
   int? searchQuantity;
   WebSocketService? _webSocketService;
+  final ProductServices _productServices =
+      ProductServices('ws://192.168.99.239:3000');
 
   @override
   void initState() {
     super.initState();
-    fetchProducts();
+    // fetchProducts();
+
+    _loadData();
     _initializeWebSocket();
+  }
+
+  Future<void> _loadData() async {
+    products = await _productServices.fetchProducts();
+    _applySortingAndFiltering(); // Chama a filtragem inicial
+    _initializeWebSocket(); // Inicializa o WebSocket para manter dados em tempo real
+    setState(() {});
   }
 
   void _initializeWebSocket() {
@@ -50,7 +62,7 @@ class _ProductListingPageState extends State<ProductListingPage> {
       } else {
         products.add(updatedProduct);
       }
-      _applySortingAndFiltering();
+      _applySortingAndFiltering(); // Reaplica a filtragem e ordenação
     });
   }
 
@@ -60,23 +72,23 @@ class _ProductListingPageState extends State<ProductListingPage> {
     super.dispose();
   }
 
-  Future<void> fetchProducts() async {
-    final url = Uri.parse('${Config.apiUrl}/api/products/');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final List<dynamic> productData = jsonDecode(response.body);
-        setState(() {
-          products = productData.map((json) => Product.fromJson(json)).toList();
-          _applySortingAndFiltering();
-        });
-      } else {
-        _showErrorDialog('Erro ao buscar produtos: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Erro: $e');
-    }
-  }
+  // Future<void> fetchProducts() async {
+  //   final url = Uri.parse('${Config.apiUrl}/api/products/');
+  //   try {
+  //     final response = await http.get(url);
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> productData = jsonDecode(response.body);
+  //       setState(() {
+  //         products = productData.map((json) => Product.fromJson(json)).toList();
+  //         _applySortingAndFiltering();
+  //       });
+  //     } else {
+  //       _showErrorDialog('Erro ao buscar produtos: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Erro: $e');
+  //   }
+  // }
 
   void _showErrorDialog(String message) {
     showDialog(

@@ -45,14 +45,17 @@ class _AddProductState extends State<AddProduct> {
     try {
       // Verifique o status selecionado e chame a função apropriada de ProductServices
       if (_selectedStatus == 'Novo') {
-        await ProductServices()
-            .updateNewProductQuantity(widget.produto.id, quantity, userId);
+        await ProductServices('ws://192.168.99.239:3000')
+            .updateNewProductQuantity(
+                widget.produto.id, quantity, userId, 'ENTRADA');
       } else if (_selectedStatus == 'Usado') {
-        await ProductServices()
-            .updateUsedProductQuantity(widget.produto.id, quantity, userId);
+        await ProductServices('ws://192.168.99.239:3000')
+            .updateUsedProductQuantity(
+                widget.produto.id, quantity, userId, 'ENTRADA');
       } else if (_selectedStatus == 'Danificado') {
-        await ProductServices()
-            .updateDamagedProductQuantity(widget.produto.id, quantity, userId);
+        await ProductServices('ws://192.168.99.239:3000')
+            .updateDamagedProductQuantity(
+                widget.produto.id, quantity, userId, 'ENTRADA');
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Produto atualizado com sucesso!')),
