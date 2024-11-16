@@ -1,17 +1,25 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/dashboard.dart';
 import 'package:velocityestoque/screens/login_page.dart';
 import 'package:velocityestoque/models/auth_provider.dart';
 import 'package:velocityestoque/models/user_provider.dart';
 // import 'package:velocityestoque/services/websocket_service.dart';
-import 'package:velocityestoque/websocket_service.dart'; // Importando o serviço
+import 'package:velocityestoque/websocket_service.dart';
+
+import 'provider/product_Provider.dart'; // Importando o serviço
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+          create: (_) => ProductProvider(),
+        ),
+      ],
       child: MyApp(),
     ),
   );
@@ -22,7 +30,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return OverlaySupport.global(
+        child: MaterialApp(
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {
           PointerDeviceKind.mouse,
@@ -38,7 +47,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: LoginPage(),
-    );
+    ));
   }
 }
 

@@ -22,110 +22,58 @@ class _ProductListingPageState extends State<ProductListingPage> {
   String searchName = '';
   String? selectedCategory;
   int? searchQuantity;
-  WebSocketService? _webSocketService;
+  String? selectedStatus; // Variável para armazenar o status selecionado
   final ProductServices _productServices =
       ProductServices('ws://192.168.99.239:3000');
 
   @override
   void initState() {
     super.initState();
-    // fetchProducts();
-
+    selectedStatus = null; // Inicializa como null para exibir todos os produtos
     _loadData();
-    _initializeWebSocket();
   }
 
   Future<void> _loadData() async {
     products = await _productServices.fetchProducts();
-    _applySortingAndFiltering(); // Chama a filtragem inicial
-    _initializeWebSocket(); // Inicializa o WebSocket para manter dados em tempo real
-    setState(() {});
-  }
-
-  void _initializeWebSocket() {
-    _webSocketService = WebSocketService('ws://192.168.99.239:3000');
-    _webSocketService!.channel.stream.listen((data) {
-      final newProductJson = jsonDecode(data);
-      print('Produto recebido: $newProductJson');
-      if (newProductJson['event'] == 'productUpdated') {
-        _updateProductList(newProductJson['data']);
-      }
-    });
-  }
-
-  void _updateProductList(dynamic updatedProductData) {
-    final updatedProduct = Product.fromJson(updatedProductData);
-    setState(() {
-      int index = products.indexWhere((prod) => prod.id == updatedProduct.id);
-      if (index != -1) {
-        products[index] = updatedProduct;
-      } else {
-        products.add(updatedProduct);
-      }
-      _applySortingAndFiltering(); // Reaplica a filtragem e ordenação
-    });
-  }
-
-  @override
-  void dispose() {
-    _webSocketService?.close();
-    super.dispose();
-  }
-
-  // Future<void> fetchProducts() async {
-  //   final url = Uri.parse('${Config.apiUrl}/api/products/');
-  //   try {
-  //     final response = await http.get(url);
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> productData = jsonDecode(response.body);
-  //       setState(() {
-  //         products = productData.map((json) => Product.fromJson(json)).toList();
-  //         _applySortingAndFiltering();
-  //       });
-  //     } else {
-  //       _showErrorDialog('Erro ao buscar produtos: ${response.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     print('Erro: $e');
-  //   }
-  // }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Erro'),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _applySortingAndFiltering() {
-    products.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    filterProducts();
+    filterProducts(); // Chama o filtro ao carregar os produtos
   }
 
   void filterProducts() {
     setState(() {
-      filteredProducts = products.where((product) {
-        final matchesName =
-            product.name.toLowerCase().contains(searchName.toLowerCase());
-        final matchesCategory =
-            selectedCategory == null || product.category == selectedCategory;
-        final matchesQuantity =
-            searchQuantity == null || product.quantity == searchQuantity;
-        return matchesName && matchesCategory && matchesQuantity;
-      }).toList();
+      // Se não houver filtros ativos, mostra todos os produtos
+      if (searchName.isEmpty &&
+          selectedCategory == null &&
+          searchQuantity == null &&
+          selectedStatus == null) {
+        filteredProducts = List.from(products);
+      } else {
+        // Aplica os filtros caso haja algum critério selecionado
+        filteredProducts = products.where((product) {
+          final matchesName =
+              product.name.toLowerCase().contains(searchName.toLowerCase());
+          final matchesCategory =
+              selectedCategory == null || product.category == selectedCategory;
+          final matchesQuantity =
+              searchQuantity == null || product.quantity == searchQuantity;
+
+          bool matchesStatus = false;
+          if (selectedStatus == 'novo') {
+            matchesStatus = product.newQuantity > 0;
+          } else if (selectedStatus == 'usado') {
+            matchesStatus = product.usedQuantity > 0;
+          } else if (selectedStatus == 'danificado') {
+            matchesStatus = product.damagedQuantity > 0;
+          } else {
+            // Se o status não for selecionado, mostra todos os produtos
+            matchesStatus = true;
+          }
+
+          return matchesName &&
+              matchesCategory &&
+              matchesQuantity &&
+              matchesStatus;
+        }).toList();
+      }
     });
   }
 
@@ -203,6 +151,28 @@ class _ProductListingPageState extends State<ProductListingPage> {
                     },
                   ),
                 ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: selectedStatus,
+                    hint: Text('Status'),
+                    items: [
+                      DropdownMenuItem(
+                          value: null, child: Text('Todos os Status')),
+                      DropdownMenuItem(value: 'novo', child: Text('Novo')),
+                      DropdownMenuItem(value: 'usado', child: Text('Usado')),
+                      DropdownMenuItem(
+                          value: 'danificado', child: Text('Danificado')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedStatus = value;
+                        filterProducts();
+                      });
+                    },
+                  ),
+                ),
               ],
             ),
             SizedBox(height: 10),
@@ -213,90 +183,141 @@ class _ProductListingPageState extends State<ProductListingPage> {
                       itemCount: filteredProducts.length,
                       itemBuilder: (context, index) {
                         final product = filteredProducts[index];
-                        final totalQuantity = product.newQuantity +
-                            product.usedQuantity +
-                            product.damagedQuantity;
 
-                        List<Widget> productCards = [];
-
-                        // Condição para adicionar o card "Novo" se a quantidade for maior que zero
-                        if (product.newQuantity > 0) {
-                          productCards.add(
-                            Cardproduct(
-                              ontap: () {
-                                showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AddProduct(
-                                        produto: filteredProducts[index],
-                                      );
-                                    });
-                              },
-                              product: product,
-                              status: 'novo',
-                              quantity: product.newQuantity,
-                              totalQuantity: totalQuantity,
-                            ),
+                        // Define o card do produto de acordo com o status filtrado
+                        Widget? productCard;
+                        if (selectedStatus == 'novo' &&
+                            product.newQuantity > 0) {
+                          productCard = Cardproduct(
+                            ontap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AddProduct(
+                                    produto: product,
+                                  );
+                                },
+                              );
+                            },
+                            product: product,
+                            status: 'novo',
+                            quantity: product.newQuantity,
+                            totalQuantity: product.newQuantity +
+                                product.usedQuantity +
+                                product.damagedQuantity,
+                          );
+                        } else if (selectedStatus == 'usado' &&
+                            product.usedQuantity > 0) {
+                          productCard = Cardproduct(
+                            ontap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AddProduct(
+                                    produto: product,
+                                  );
+                                },
+                              );
+                            },
+                            product: product,
+                            status: 'usado',
+                            quantity: product.usedQuantity,
+                            totalQuantity: product.newQuantity +
+                                product.usedQuantity +
+                                product.damagedQuantity,
+                          );
+                        } else if (selectedStatus == 'danificado' &&
+                            product.damagedQuantity > 0) {
+                          productCard = Cardproduct(
+                            ontap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AddProduct(
+                                    produto: product,
+                                  );
+                                },
+                              );
+                            },
+                            product: product,
+                            status: 'danificado',
+                            quantity: product.damagedQuantity,
+                            totalQuantity: product.newQuantity +
+                                product.usedQuantity +
+                                product.damagedQuantity,
+                          );
+                        } else if (selectedStatus == null) {
+                          // Se nenhum status for selecionado, exibe todos os cards
+                          productCard = Column(
+                            children: [
+                              if (product.newQuantity >= 0)
+                                Cardproduct(
+                                  ontap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AddProduct(
+                                          produto: product,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  product: product,
+                                  status: 'novo',
+                                  quantity: product.newQuantity,
+                                  totalQuantity: product.newQuantity +
+                                      product.usedQuantity +
+                                      product.damagedQuantity,
+                                ),
+                              if (product.usedQuantity >= 0)
+                                Cardproduct(
+                                  ontap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AddProduct(
+                                          produto: product,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  product: product,
+                                  status: 'usado',
+                                  quantity: product.usedQuantity,
+                                  totalQuantity: product.newQuantity +
+                                      product.usedQuantity +
+                                      product.damagedQuantity,
+                                ),
+                              if (product.damagedQuantity >= 0)
+                                Cardproduct(
+                                  ontap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AddProduct(
+                                          produto: product,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  product: product,
+                                  status: 'danificado',
+                                  quantity: product.damagedQuantity,
+                                  totalQuantity: product.newQuantity +
+                                      product.usedQuantity +
+                                      product.damagedQuantity,
+                                ),
+                            ],
                           );
                         }
 
-                        // Condição para adicionar o card "Usado" se a quantidade for maior que zero
-                        if (product.usedQuantity > 0) {
-                          productCards.add(
-                            Cardproduct(
-                              ontap: () {
-                                showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AddProduct(
-                                        produto: filteredProducts[index],
-                                      );
-                                    });
-                              },
-                              product: product,
-                              status: 'usado',
-                              quantity: product.usedQuantity,
-                              totalQuantity: totalQuantity,
-                            ),
-                          );
-                        }
-
-                        // Condição para adicionar o card "Danificado" se a quantidade for maior que zero
-                        if (product.damagedQuantity > 0) {
-                          productCards.add(
-                            Cardproduct(
-                              ontap: () {
-                                showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AddProduct(
-                                        produto: filteredProducts[index],
-                                      );
-                                    });
-                              },
-                              product: product,
-                              status: 'danificado',
-                              quantity: product.damagedQuantity,
-                              totalQuantity: totalQuantity,
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: productCards,
-                        );
+                        return productCard ?? SizedBox.shrink();
                       },
                     ),
             ),
           ],
         ),
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     // Ação para adicionar um novo produto
-      //   },
-      //   child: Icon(Icons.add),
-      // ),
     );
   }
 }

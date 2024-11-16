@@ -304,12 +304,11 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                       ),
                       InkWell(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ConfigMenber(),
-                            ),
-                          );
+                          showDialog(
+                              context: context,
+                              builder: (context) {
+                                return ConfigMember();
+                              });
                         },
                         child: Container(
                           height: 32.sp,

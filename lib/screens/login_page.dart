@@ -5,7 +5,8 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/baseConect.dart';
 import 'package:velocityestoque/dashboard.dart';
-import '../models/auth_provider.dart'; // Importar o AuthProvider
+import '../models/auth_provider.dart';
+import '../popups/popup_loginUser.dart'; // Importar o AuthProvider
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +19,66 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+
+  final Map<String, List<OverlayEntry>> activePopupsMap =
+      {}; // Associa popups a cada membro
+
+  void showCustomPopup(BuildContext context, String memberId) {
+    OverlayState overlayState = Overlay.of(context)!;
+
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        // Obtém a lista de popups para o membro específico
+        List<OverlayEntry> memberPopups = activePopupsMap[memberId] ?? [];
+        int index = memberPopups.indexOf(overlayEntry);
+        return Positioned(
+          right: 20,
+          bottom: 20 + (index * 80), // Empilha verticalmente
+          child: Material(
+            color: Colors.transparent,
+            child: PopupLoginuser(
+              nome: memberId,
+              onConfirm: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+              onCancel: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    // Adiciona o popup ao mapa do membro correspondente
+    activePopupsMap.putIfAbsent(memberId, () => []).add(overlayEntry);
+    overlayState.insert(overlayEntry);
+
+    // Fecha automaticamente após 10 segundos
+    Future.delayed(Duration(seconds: 10), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+        activePopupsMap[memberId]?.remove(overlayEntry);
+        _updatePopupPositions(memberId);
+      }
+    });
+  }
+
+// Método para reposicionar os popups de um membro específico
+  void _updatePopupPositions(String memberId) {
+    List<OverlayEntry>? memberPopups = activePopupsMap[memberId];
+    if (memberPopups != null) {
+      for (var i = 0; i < memberPopups.length; i++) {
+        memberPopups[i].markNeedsBuild();
+      }
+    }
+  }
 
   Future<void> login(String email, String password) async {
     final url =
@@ -55,6 +116,7 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: Colors.green,
             ),
           );
+          showCustomPopup(context, userName);
 
           // Navegar para a tela de dashboard
           Navigator.pushReplacement(

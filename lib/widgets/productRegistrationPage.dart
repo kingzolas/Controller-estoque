@@ -4,8 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/models/auth_provider.dart';
 
-import 'baseConect.dart';
-import 'services/products_services.dart';
+import '../baseConect.dart';
+import '../popups/popup_createProduct.dart';
+import '../services/products_services.dart';
 
 class ProductRegistrationPage extends StatefulWidget {
   @override
@@ -43,80 +44,85 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
     setState(() {});
   }
 
-  // // Função para buscar as categorias da API
-  // Future<void> _fetchCategories() async {
-  //   final url = '${Config.apiUrl}/api/categories';
-  //   try {
-  //     final response = await http.get(Uri.parse(url));
+  final Map<String, List<OverlayEntry>> activePopupsMap =
+      {}; // Associa popups a cada membro
 
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> data = jsonDecode(response.body);
-  //       setState(() {
-  //         // Armazena cada categoria como um mapa com ID e nome
-  //         _categories = data.map((category) {
-  //           return {'id': category['_id'], 'name': category['name']};
-  //         }).toList();
-  //       });
-  //     } else {
-  //       throw Exception('Falha ao carregar categorias');
-  //     }
-  //   } catch (error) {
-  //     print('Erro: $error');
-  //   }
-  // }
+  void showCustomPopup(BuildContext context, String memberId) {
+    OverlayState overlayState = Overlay.of(context)!;
 
-  // Future<void> _fetchMarcas() async {
-  //   final url = '${Config.apiUrl}/api/marcas';
-  //   try {
-  //     final response = await http.get(Uri.parse(url));
-  //     print(_marcas);
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> data = jsonDecode(response.body);
-  //       setState(() {
-  //         // Armazena cada categoria como um mapa com ID e nome
-  //         _marcas = data.map((marca) {
-  //           return {
-  //             'id': marca['_id'],
-  //             'name': marca['name'],
-  //             'fabricante': marca['fabricante']
-  //           };
-  //         }).toList();
-  //       });
-  //     } else {
-  //       throw Exception('Falha ao carregar categorias');
-  //     }
-  //   } catch (error) {
-  //     print('Erro: $error');
-  //   }
-  // }
+    late OverlayEntry overlayEntry;
 
-  // Future<void> _fetchMarcas() async {
-  //   final url = '${Config.apiUrl}/api/marcas';
-  //   try {
-  //    final response = await http.get(Uri.parse(url));
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        // Obtém a lista de popups para o membro específico
+        List<OverlayEntry> memberPopups = activePopupsMap[memberId] ?? [];
+        int index = memberPopups.indexOf(overlayEntry);
+        return Positioned(
+          right: 20,
+          bottom: 20 + (index * 80), // Empilha verticalmente
+          child: Material(
+            color: Colors.transparent,
+            child: PopupCreateproduct(
+              nome: memberId,
+              onConfirm: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+              onCancel: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+            ),
+          ),
+        );
+      },
+    );
 
-  //    if (response.statusCode = 200) {
-  //     final List<dynamic> data = jsonDecode(response.body);
-  //     setState(() {
-  //       _marcas = data.map(marca) {
-  //         return {'id': marca['_id'], 'name': marca['name'], 'fabricante': marca['fabricante']}
-  //       }
-  //     });
-  //    }
-  // }
+    // Adiciona o popup ao mapa do membro correspondente
+    activePopupsMap.putIfAbsent(memberId, () => []).add(overlayEntry);
+    overlayState.insert(overlayEntry);
+
+    // Fecha automaticamente após 10 segundos
+    Future.delayed(Duration(seconds: 5), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+        activePopupsMap[memberId]?.remove(overlayEntry);
+        _updatePopupPositions(memberId);
+      }
+    });
+  }
+
+// Método para reposicionar os popups de um membro específico
+  void _updatePopupPositions(String memberId) {
+    List<OverlayEntry>? memberPopups = activePopupsMap[memberId];
+    if (memberPopups != null) {
+      for (var i = 0; i < memberPopups.length; i++) {
+        memberPopups[i].markNeedsBuild();
+      }
+    }
+  }
 
   // Função para enviar o produto cadastrado para a API
-  Future<void> _submitProduct(String name, int quantity, String categoryId,
-      String description, String unit, String userId, String marca) async {
+  Future<void> _submitProduct(
+      String name,
+      String categoryId,
+      String description,
+      String unit,
+      String userId,
+      String marca,
+      int totalQuantity) async {
     final url = '${Config.apiUrl}/api/products';
     final Map<String, dynamic> productData = {
       'name': name,
-      'quantity': quantity,
+      // 'quantity': quantity,
       'category': categoryId, // Passando o ID da categoria
       'description': description,
       'unit': unit,
       'marca': marca,
-      'usuarioId': userId
+      'usuarioId': userId,
+      'totalQuantity': totalQuantity
     };
 
     // Adicione esta linha para ver o que está sendo enviado ao servidor
@@ -131,6 +137,7 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
 
       if (response.statusCode == 201) {
         print(response.body);
+        showCustomPopup(context, _nameController.text);
         // Produto cadastrado com sucesso
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Produto cadastrado com sucesso!')),
@@ -188,20 +195,20 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
               SizedBox(height: 16),
 
               // Quantidade
-              TextFormField(
-                controller: _quantityController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Quantidade',
-                  prefixIcon: Icon(Icons.add), // Ícone para quantidade
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a quantidade';
-                  }
-                  return null;
-                },
-              ),
+              // TextFormField(
+              //   controller: _quantityController,
+              //   keyboardType: TextInputType.number,
+              //   decoration: InputDecoration(
+              //     labelText: 'Quantidade',
+              //     prefixIcon: Icon(Icons.add), // Ícone para quantidade
+              //   ),
+              //   validator: (value) {
+              //     if (value == null || value.isEmpty) {
+              //       return 'Por favor, insira a quantidade';
+              //     }
+              //     return null;
+              //   },
+              // ),
               SizedBox(height: 16),
 
               // Categoria (Dropdown carregando as categorias da API)
@@ -299,16 +306,17 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     final String name = _nameController.text;
-                    final int quantity = int.parse(_quantityController.text);
+                    // final int quantity = int.parse(_quantityController.text);
                     final String categoryId = _selectedCategoryId ?? '';
                     final String description = _descriptionController.text;
                     final String unit = _selectedUnit ?? '';
                     final String userId = authProvider.userId ?? '';
                     final String marca = _selectedMarcaId ?? '';
+                    final int totalQuantity = 0;
 
                     // Submeter produto para API
-                    _submitProduct(name, quantity, categoryId, description,
-                        unit, userId, marca);
+                    _submitProduct(name, categoryId, description, unit, userId,
+                        marca, totalQuantity);
                   }
                 },
                 child: Text('Cadastrar Produto'),

@@ -77,7 +77,7 @@ class ProductServices {
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        print(response.body);
+        // print(response.body);
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => MovimentacaoModel.fromJson(json)).toList();
       } else {
@@ -117,9 +117,10 @@ class ProductServices {
     }
   }
 
-  // Método para atualizar quantidade de produtos novos
+// Método para atualizar quantidade de produtos novos
   Future<void> updateNewProductQuantity(String productId, int quantity,
-      String userId, String movementacao) async {
+      String userId, String movementacao, String marca,
+      {String? membroId}) async {
     final url = '${Config.apiUrl}/api/products/$productId/novo';
 
     try {
@@ -130,7 +131,11 @@ class ProductServices {
         body: jsonEncode({
           'conditionQuantities': {'new': quantity},
           'tipoMovimentacao': movementacao,
-          'usuario': userId
+          'usuario': userId,
+          'membro': membroId ??
+              null, // Usando membroId, se não for fornecido, será uma string vazia
+          'marca': marca,
+          'statusProduto': 'Novo',
         }),
       );
       if (response.statusCode == 200) {
@@ -144,9 +149,30 @@ class ProductServices {
     }
   }
 
-  // Método para atualizar quantidade de produtos usados
+  Future<void> createMarca(String name, String fabricante) async {
+    final url = '${Config.apiUrl}/api/marca';
+    final Map<String, dynamic> marcaData = {
+      'name': name,
+      'fabricante': fabricante
+    };
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(marcaData),
+      );
+      if (response.statusCode != 201) {
+        throw Exception('Erro ao cadastrar marca: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Erro $error');
+    }
+  }
+
+// Método para atualizar quantidade de produtos usados
   Future<void> updateUsedProductQuantity(String productId, int quantity,
-      String userId, String movementacao) async {
+      String userId, String movementacao, String marca,
+      {String? membroId}) async {
     final url = '${Config.apiUrl}/api/products/$productId/usado';
     try {
       final response = await http.put(
@@ -155,7 +181,11 @@ class ProductServices {
         body: jsonEncode({
           'conditionQuantities': {'used': quantity},
           'tipoMovimentacao': movementacao,
-          'usuario': userId
+          'usuario': userId,
+          'membro': membroId ?? null,
+          'marca':
+              marca, // Usando membroId, se não for fornecido, será uma string vazia
+          'statusProduto': 'Usado',
         }),
       );
       if (response.statusCode == 200) {
@@ -169,9 +199,10 @@ class ProductServices {
     }
   }
 
-  // Método para atualizar quantidade de produtos danificados
+// Método para atualizar quantidade de produtos danificados
   Future<void> updateDamagedProductQuantity(String productId, int quantity,
-      String userId, String movementacao) async {
+      String userId, String movementacao, String marca,
+      {String? membroId}) async {
     final url = '${Config.apiUrl}/api/products/$productId/danificado';
     try {
       final response = await http.put(
@@ -181,6 +212,10 @@ class ProductServices {
           'conditionQuantities': {'damaged': quantity},
           'tipoMovimentacao': movementacao,
           'usuario': userId,
+          'membro': membroId ??
+              null, // Usando membroId, se não for fornecido, será uma string vazia
+          'marca': marca,
+          'statusProduto': 'Danificado',
         }),
       );
       if (response.statusCode == 200) {
@@ -194,10 +229,43 @@ class ProductServices {
     }
   }
 
-  // Método para escutar mensagens do WebSocket
-  void listenToMessages(Function(String message) onMessage) {
+  // Método para registrar a devolução de um produto
+  Future<void> returnProduct(int quantity, String userId, String reason,
+      String membroId, String movimentaId, String status) async {
+    final url = '${Config.apiUrl}/api/movimentacoes/$movimentaId/devolucao';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          // movimentaId: movimentaId,
+          // 'produto._id': productId,
+          'quantidadeDevolvida': quantity,
+          'usuario': userId,
+          'membro': membroId,
+          'motivoDevolucao': reason,
+          'statusProduto': status
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Produto devolvido com sucesso.');
+      } else {
+        throw Exception('Erro ao registrar devolução: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Erro: $error');
+    }
+  }
+
+// Método para escutar mensagens do WebSocket e atualizar a interface do usuário em tempo real
+  void listenToMessages(Function(Map<String, dynamic> update) onUpdate) {
     channel.stream.listen((message) {
-      onMessage(message);
+      // Decodifica a mensagem JSON recebida
+      final decodedMessage = jsonDecode(message);
+      // Chama a função passada como parâmetro para atualizar os dados
+      onUpdate(decodedMessage);
     }, onError: (error) {
       print('Erro no WebSocket: $error');
     }, onDone: () {

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:velocityestoque/models/marcas_model.dart';
+import 'package:velocityestoque/provider/productController.dart';
 import 'package:velocityestoque/screens/historic_products.dart';
 import 'package:velocityestoque/services/products_services.dart';
 import 'package:velocityestoque/widgets/add_member_products.dart';
+import 'package:velocityestoque/widgets/return_itens_member.dart';
 
 import '../models/member_model.dart';
 
@@ -29,6 +32,7 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
   List<MovimentacaoModel> products = [];
   List<MovimentacaoModel> filteredProducts = [];
   String searchName = '';
+  final ProductController productController = Get.put(ProductController());
 
   @override
   void initState() {
@@ -309,6 +313,18 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                             bordertopleft: 0,
                             borderTopRight: 0,
                             borderColor: Color(0xffE3E8EE),
+                            texto: 'Movimentação',
+                            widthlarge: 1),
+                        _containerHeader(
+                            bordertopleft: 0,
+                            borderTopRight: 0,
+                            borderColor: Color(0xffE3E8EE),
+                            texto: 'Quantidade',
+                            widthlarge: 1),
+                        _containerHeader(
+                            bordertopleft: 0,
+                            borderTopRight: 0,
+                            borderColor: Color(0xffE3E8EE),
                             texto: 'Status',
                             widthlarge: 1),
                         _containerHeader(
@@ -322,7 +338,7 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                             borderTopRight: 10,
                             borderColor: Colors.transparent,
                             texto: 'Ações',
-                            widthlarge: 2),
+                            widthlarge: 1),
                       ],
                     ),
                     Expanded(
@@ -342,7 +358,10 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                                 itemCount: filteredProducts.length,
                                 itemBuilder: (context, index) {
                                   final product = filteredProducts[index];
-                                  return Ceduleproduct(product: product);
+                                  return Ceduleproduct(
+                                    product: product,
+                                    membro: widget.membro,
+                                  );
                                 },
                               ),
                       ),
@@ -358,7 +377,8 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
 
 class Ceduleproduct extends StatefulWidget {
   final MovimentacaoModel product;
-  const Ceduleproduct({super.key, required this.product});
+  final MemberModel membro;
+  const Ceduleproduct({super.key, required this.product, required this.membro});
 
   @override
   State<Ceduleproduct> createState() => _CeduleproductState();
@@ -372,6 +392,8 @@ String formatarData(String dataISO) {
 class _CeduleproductState extends State<Ceduleproduct> {
   @override
   Widget build(BuildContext context) {
+    final int quantidadeReal =
+        widget.product.Quantidade - widget.product.quantidadeDevolvidaAcumulada;
     return ScreenUtilInit(
         designSize: const Size(1920, 1080),
         minTextAdapt: true,
@@ -388,7 +410,7 @@ class _CeduleproductState extends State<Ceduleproduct> {
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
-                        borderColor: Color(0xffA0A6AD),
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
                         texto: widget.product.Produto,
                         widthlarge: 2),
                     _containerCelula(
@@ -396,7 +418,7 @@ class _CeduleproductState extends State<Ceduleproduct> {
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
-                        borderColor: Color(0xffA0A6AD),
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
                         texto: widget.product.marca,
                         widthlarge: 1),
                     _containerCelula(
@@ -404,36 +426,63 @@ class _CeduleproductState extends State<Ceduleproduct> {
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
-                        borderColor: Color(0xffA0A6AD),
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
                         texto: widget.product.categoria,
                         widthlarge: 2),
-                    _containerCelulaStatus(
-                        status: widget.product.status,
+                    _containerCelula(
                         bordertopleft: 0,
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
-                        borderColor: Color(0xffA0A6AD),
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
+                        texto: widget.product.statusMovimentacao,
                         widthlarge: 1),
                     _containerCelula(
                         bordertopleft: 0,
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
-                        borderColor: Color(0xffA0A6AD),
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
+                        texto: quantidadeReal.toString(),
+                        widthlarge: 1),
+                    _containerCelulaStatus(
+                        status: widget.product.status,
+                        bordertopleft: 0,
+                        borderTopRight: 0,
+                        borderbottomRight: 0,
+                        borderbottomLeft: 0,
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
+                        widthlarge: 1),
+                    _containerCelula(
+                        bordertopleft: 0,
+                        borderTopRight: 0,
+                        borderbottomRight: 0,
+                        borderbottomLeft: 0,
+                        borderColor: Color.fromARGB(255, 40, 40, 41),
                         texto: formatarData(widget.product.dataMovimentacao),
                         widthlarge: 1),
                     _containerCelulaAction(
+                        ontap: () {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return ReturnItensMember(
+                                  membro: widget.membro,
+                                  produto: widget.product,
+                                );
+                              });
+                        },
+                        context: context,
                         bordertopleft: 0,
                         borderTopRight: 0,
                         borderbottomRight: 0,
                         borderbottomLeft: 0,
                         borderColor: Colors.transparent,
-                        widthlarge: 2),
+                        widthlarge: 1),
                   ],
                 ),
                 Container(
-                  color: Color(0xffA0A6AD),
+                  color: Color.fromARGB(255, 40, 40, 41),
                   height: 0.4,
                 )
               ],
@@ -473,6 +522,7 @@ Widget _containerHeader(
           child: Text(
             texto,
             style: TextStyle(
+                overflow: TextOverflow.ellipsis,
                 color: Colors.white,
                 fontSize: 23.sp,
                 fontWeight: FontWeight.w500),
@@ -494,21 +544,21 @@ Widget _containerCelulaStatus(
   // Função para definir a cor e o ícone com base no status
   Map<String, dynamic> _statusInfo(String status) {
     switch (status) {
-      case 'novo':
+      case 'Novo':
         return {
           'color': Color(0xffB1F0C1),
           'textColor': Color(0xff4CC67A),
           'iconColor': Color(0xff4CC67A),
           'text': 'Novo',
         };
-      case 'usado':
+      case 'Usado':
         return {
           'color': Color(0xffEEDCB0),
           'textColor': Color(0xffDAA520),
           'iconColor': Color(0xffDAA520),
           'text': 'Usado',
         };
-      case 'danificado':
+      case 'Danificado':
         return {
           'color': Color(0xffF0B1B1),
           'textColor': Color(0xffD9534F),
@@ -590,6 +640,8 @@ Widget _containerCelulaAction(
     required double borderbottomRight,
     required double borderbottomLeft,
     required Color borderColor,
+    required GestureTapCallback ontap,
+    required BuildContext context,
     required int widthlarge}) {
   return Expanded(
     flex: widthlarge,
@@ -614,18 +666,21 @@ Widget _containerCelulaAction(
         child: Center(
           child: Padding(
             padding: EdgeInsets.only(top: 5, bottom: 5),
-            child: Container(
-              width: 150.sp,
-              decoration: BoxDecoration(
-                  color: Color(0xffF25252),
-                  borderRadius: BorderRadius.all(Radius.circular(10))),
-              child: Center(
-                child: Text(
-                  'Devolver',
-                  style: TextStyle(
-                      color: Color.fromARGB(255, 255, 255, 255),
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w500),
+            child: InkWell(
+              onTap: ontap,
+              child: Container(
+                width: 150.sp,
+                decoration: BoxDecoration(
+                    color: Color(0xffF25252),
+                    borderRadius: BorderRadius.all(Radius.circular(10))),
+                child: Center(
+                  child: Text(
+                    'Devolver',
+                    style: TextStyle(
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/models/user_model.dart';
+import 'package:velocityestoque/popups/popup_addProduct.dart';
 
 import '../models/auth_provider.dart';
 import '../models/product_model.dart';
@@ -21,6 +22,67 @@ class _AddProductState extends State<AddProduct> {
       TextEditingController(text: '0');
   String _selectedStatus = 'Novo';
 
+  final Map<String, List<OverlayEntry>> activePopupsMap =
+      {}; // Associa popups a cada membro
+
+  void showCustomPopup(BuildContext context, String memberId, int quantidade) {
+    OverlayState overlayState = Overlay.of(context)!;
+
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        // Obtém a lista de popups para o membro específico
+        List<OverlayEntry> memberPopups = activePopupsMap[memberId] ?? [];
+        int index = memberPopups.indexOf(overlayEntry);
+        return Positioned(
+          right: 20,
+          bottom: 20 + (index * 80), // Empilha verticalmente
+          child: Material(
+            color: Colors.transparent,
+            child: PopupAddproduct(
+              quantidade: quantidade,
+              nome: memberId,
+              onConfirm: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+              onCancel: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    // Adiciona o popup ao mapa do membro correspondente
+    activePopupsMap.putIfAbsent(memberId, () => []).add(overlayEntry);
+    overlayState.insert(overlayEntry);
+
+    // Fecha automaticamente após 10 segundos
+    Future.delayed(Duration(seconds: 7), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+        activePopupsMap[memberId]?.remove(overlayEntry);
+        _updatePopupPositions(memberId);
+      }
+    });
+  }
+
+// Método para reposicionar os popups de um membro específico
+  void _updatePopupPositions(String memberId) {
+    List<OverlayEntry>? memberPopups = activePopupsMap[memberId];
+    if (memberPopups != null) {
+      for (var i = 0; i < memberPopups.length; i++) {
+        memberPopups[i].markNeedsBuild();
+      }
+    }
+  }
+
   void _incrementQuantity() {
     setState(() {
       int currentQuantity = int.tryParse(_quantityController.text) ?? 0;
@@ -39,7 +101,8 @@ class _AddProductState extends State<AddProduct> {
     });
   }
 
-  Future<void> _addProduct({required String userId}) async {
+  Future<void> _addProduct(
+      {required String userId, required String marca}) async {
     final int quantity = int.tryParse(_quantityController.text) ?? 0;
 
     try {
@@ -47,15 +110,15 @@ class _AddProductState extends State<AddProduct> {
       if (_selectedStatus == 'Novo') {
         await ProductServices('ws://192.168.99.239:3000')
             .updateNewProductQuantity(
-                widget.produto.id, quantity, userId, 'ENTRADA');
+                widget.produto.id, quantity, userId, 'ENTRADA', marca);
       } else if (_selectedStatus == 'Usado') {
         await ProductServices('ws://192.168.99.239:3000')
             .updateUsedProductQuantity(
-                widget.produto.id, quantity, userId, 'ENTRADA');
+                widget.produto.id, quantity, userId, 'ENTRADA', marca);
       } else if (_selectedStatus == 'Danificado') {
         await ProductServices('ws://192.168.99.239:3000')
             .updateDamagedProductQuantity(
-                widget.produto.id, quantity, userId, 'ENTRADA');
+                widget.produto.id, quantity, userId, 'ENTRADA', marca);
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Produto atualizado com sucesso!')),
@@ -83,6 +146,7 @@ class _AddProductState extends State<AddProduct> {
                 padding: const EdgeInsets.only(left: 30, right: 30),
                 child: Column(
                   children: [
+                    // Text('${widget.produto.id}'),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -115,9 +179,14 @@ class _AddProductState extends State<AddProduct> {
                         ),
                         GestureDetector(
                           onTap: () {
+                            final int quantity =
+                                int.tryParse(_quantityController.text) ?? 0;
                             if (true) {
                               final String userId = authProvider.userId ?? '';
-                              _addProduct(userId: userId);
+                              _addProduct(
+                                  userId: userId, marca: widget.produto.marca);
+                              showCustomPopup(
+                                  context, widget.produto.name, quantity);
                             }
                           },
                           // _addProduct, // Chama a função ao clicar em "Adicionar"
@@ -164,7 +233,7 @@ class _AddProductState extends State<AddProduct> {
                             ),
                             TextSpan(
                               text:
-                                  'Informe a quantidade de item que está sendo devolvido',
+                                  'Informe a quantidade de item que está sendo adicionado',
                               style: TextStyle(
                                 color: Color(0xFFADBFD4),
                                 fontSize: 20.sp,
@@ -291,7 +360,7 @@ class _AddProductState extends State<AddProduct> {
                             ),
                             TextSpan(
                               text:
-                                  'Informe o status do item que está sendo devolvido',
+                                  'Informe o status do item que está sendo adicionado',
                               style: TextStyle(
                                 color: Color(0xFFADBFD4),
                                 fontSize: 20.sp,
@@ -389,7 +458,7 @@ class _AddProductState extends State<AddProduct> {
                             ),
                             TextSpan(
                               text:
-                                  'Informe as condições em que o item está sendo devolvido',
+                                  'Informe as condições em que o item está sendo adicionado',
                               style: TextStyle(
                                 color: Color(0xFFADBFD4),
                                 fontSize: 20,

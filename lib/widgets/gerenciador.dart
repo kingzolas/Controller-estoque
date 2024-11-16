@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:velocityestoque/productRegistrationPage.dart';
+import 'package:velocityestoque/widgets/productRegistrationPage.dart';
 // import 'package:velocityestoque/productRegistrationPage.dart';
 import 'package:velocityestoque/screens/create_category.dart';
+import 'package:velocityestoque/screens/create_marcas.dart';
 import 'package:velocityestoque/screens/create_members.dart';
 import 'package:velocityestoque/screens/historic_products.dart';
 
@@ -57,5 +58,12 @@ class History extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HistoricProducts();
+  }
+}
+
+class Marcas extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CreateMarcas();
   }
 }

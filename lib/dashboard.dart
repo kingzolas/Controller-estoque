@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
+import 'package:velocityestoque/screens/create_marcas.dart';
 import 'package:velocityestoque/screens/create_members.dart';
-import 'package:velocityestoque/gerenciador.dart';
+import 'package:velocityestoque/widgets/gerenciador.dart';
 import 'package:velocityestoque/models/auth_provider.dart';
 
 class Dashboard extends StatefulWidget {
@@ -23,7 +24,8 @@ class _DashboardState extends State<Dashboard> {
     NotificationsScreen(),
     Category(),
     CreateMemberPage(),
-    History()
+    History(),
+    Marcas()
   ];
 
   void _onItemTapped(int index) {
@@ -115,6 +117,11 @@ class _DashboardState extends State<Dashboard> {
                                       icon: Icons.history,
                                       isSelected: _selectedIndex == 5,
                                       onTap: () => _onItemTapped(5),
+                                    ),
+                                    sidebutom(
+                                      icon: Icons.save_as_outlined,
+                                      isSelected: _selectedIndex == 6,
+                                      onTap: () => _onItemTapped(6),
                                     )
                                   ],
                                 ),

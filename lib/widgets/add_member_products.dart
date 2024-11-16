@@ -1,8 +1,12 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:overlay_support/overlay_support.dart';
+import 'package:provider/provider.dart';
+import 'package:velocityestoque/models/auth_provider.dart';
 import 'package:velocityestoque/models/member_model.dart';
 import 'package:velocityestoque/models/product_model.dart';
+import 'package:velocityestoque/popups/popup_poduct_retirado.dart';
 import 'package:velocityestoque/widgets/add_product.dart';
 import 'package:velocityestoque/widgets/cardProduct2.dart';
 import '../services/products_services.dart';
@@ -16,11 +20,15 @@ class AddMemberProducts extends StatefulWidget {
 }
 
 class _AddMemberProductsState extends State<AddMemberProducts> {
+  final Map<String, TextEditingController> _controllers = {};
   List<Map<String, dynamic>> _categories = [];
   String? selectedCategory;
   List<Product> products = [];
   List<Product> filteredProducts = [];
   String searchName = '';
+  String? selectedProductId; // Para armazenar o ID do produto selecionado
+  String? selectedStatus; // Para armazenar o status do produto
+  int? quantity; // Para armazenar a quantidade digitada
   final ProductServices _productServices =
       ProductServices('ws://192.168.99.239:3000');
 
@@ -82,7 +90,125 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
     );
   }
 
+  Future<void> _updateProductQuantity(
+    String productId,
+    String userId,
+    String memberId,
+    String status,
+    int quantity,
+    String marca,
+  ) async {
+    if (quantity <= 0) {
+      print('Quantidade inválida para o produto: $productId');
+      return;
+    }
+
+    try {
+      switch (status) {
+        case 'novo':
+          await _productServices.updateNewProductQuantity(
+              productId,
+              quantity,
+              userId,
+              'SAIDA',
+              membroId: widget.membro.id,
+              marca);
+          break;
+        case 'usado':
+          await _productServices.updateUsedProductQuantity(
+              productId,
+              quantity,
+              userId,
+              'SAIDA',
+              membroId: widget.membro.id,
+              marca);
+          break;
+        case 'danificado':
+          await _productServices.updateDamagedProductQuantity(
+              productId,
+              quantity,
+              userId,
+              'SAIDA',
+              membroId: widget.membro.id,
+              marca);
+          break;
+        default:
+          throw Exception('Status desconhecido');
+      }
+
+      // Exibir alert dialog de sucesso aqui
+      showCustomPopup(context, widget.membro.id);
+
+      await _loadData();
+    } catch (e) {
+      print('Erro ao atualizar a quantidade do produto: $e');
+    }
+  }
+
+  final Map<String, List<OverlayEntry>> activePopupsMap =
+      {}; // Associa popups a cada membro
+
+  void showCustomPopup(BuildContext context, String memberId) {
+    OverlayState overlayState = Overlay.of(context)!;
+
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        // Obtém a lista de popups para o membro específico
+        List<OverlayEntry> memberPopups = activePopupsMap[memberId] ?? [];
+        int index = memberPopups.indexOf(overlayEntry);
+        return Positioned(
+          right: 20,
+          bottom: 20 + (index * 80), // Empilha verticalmente
+          child: Material(
+            color: Colors.transparent,
+            child: CustomPopup(
+              nome: widget.membro.name,
+              onConfirm: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+              onCancel: () {
+                overlayEntry.remove();
+                memberPopups.remove(overlayEntry);
+                _updatePopupPositions(memberId);
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    // Adiciona o popup ao mapa do membro correspondente
+    activePopupsMap.putIfAbsent(memberId, () => []).add(overlayEntry);
+    overlayState.insert(overlayEntry);
+
+    // Fecha automaticamente após 10 segundos
+    Future.delayed(Duration(seconds: 5), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+        activePopupsMap[memberId]?.remove(overlayEntry);
+        _updatePopupPositions(memberId);
+      }
+    });
+  }
+
+// Método para reposicionar os popups de um membro específico
+  void _updatePopupPositions(String memberId) {
+    List<OverlayEntry>? memberPopups = activePopupsMap[memberId];
+    if (memberPopups != null) {
+      for (var i = 0; i < memberPopups.length; i++) {
+        memberPopups[i].markNeedsBuild();
+      }
+    }
+  }
+
+  String? _activeTextFieldId; // Rastreia o campo de entrada ativo
+
   Widget _buildHeader() {
+    final authProvider = Provider.of<AuthProvider>(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -106,11 +232,37 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
           ],
         ),
         _containerAction(
-          ontap: () {},
+          ontap: () {
+            quantity =
+                int.tryParse(_controllers[selectedProductId]?.text ?? '') ?? 0;
+            print('Produto selecionado: $selectedProductId');
+            print('Status selecionado: $selectedStatus');
+            print('Quantidade: $quantity');
+
+            if (selectedProductId != null &&
+                selectedStatus != null &&
+                quantity != null &&
+                quantity! > 0) {
+              final String userId = authProvider.userId ?? '';
+              final Product selectedProduct = products
+                  .firstWhere((product) => product.id == selectedProductId);
+              _updateProductQuantity(
+                selectedProductId!,
+                userId,
+                widget.membro.id,
+                selectedStatus!,
+                quantity!,
+                selectedProduct.marca, // Passa a marca do produto selecionado
+              );
+            } else {
+              print(
+                  'Por favor, selecione um produto, status e insira uma quantidade válida.');
+            }
+          },
           color: Color(0xff4CC67A),
           icon: Icons.bookmark_added,
           text: 'Finalizar',
-        ),
+        )
       ],
     );
   }
@@ -262,17 +414,23 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
 
   Widget _buildCard(
       Product product, String status, int quantity, int totalQuantity) {
-    final TextEditingController _controller =
-        TextEditingController(); // Controlador para o campo de entrada
+    if (!_controllers.containsKey(product.id)) {
+      _controllers[product.id] = TextEditingController();
+    }
 
     return CardProduct2(
       ontap: () {
-        // Aqui você pode fazer o que desejar com o valor do campo de texto
-        String inputQuantity = _controller.text; // Pega o valor do campo
-        // Exemplo: apenas exibir o valor em um print
-        print('Quantidade retirada: $inputQuantity');
+        setState(() {
+          selectedProductId = product.id;
+          selectedStatus = status;
+          quantity = int.tryParse(_controllers[product.id]?.text ?? '') ?? 0;
 
-        // Você pode adicionar mais lógica aqui, como validação ou armazenamento
+          // Limpa os outros campos quando este é selecionado
+          _activeTextFieldId = product.id;
+          _controllers.forEach((key, controller) {
+            if (key != _activeTextFieldId) controller.clear();
+          });
+        });
       },
       child: Container(
         width: 300.sp,
@@ -298,7 +456,7 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
                     borderRadius: BorderRadius.circular(5)),
               ),
               child: TextField(
-                controller: _controller,
+                controller: _controllers[product.id],
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   border: InputBorder.none,
@@ -309,6 +467,14 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
                   fontSize: 18.sp,
                   color: Colors.black,
                 ),
+                onTap: () {
+                  setState(() {
+                    _activeTextFieldId = product.id;
+                    _controllers.forEach((key, controller) {
+                      if (key != _activeTextFieldId) controller.clear();
+                    });
+                  });
+                },
               ),
             ),
           ],
