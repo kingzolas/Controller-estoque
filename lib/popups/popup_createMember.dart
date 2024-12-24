@@ -35,7 +35,7 @@ class _PopupCreatememberState extends State<PopupCreatemember> {
               borderRadius: BorderRadius.circular(20),
             ),
             content: Container(
-              width: 520.sp,
+              // width: 520.sp,
               color: Color(0xFFFEB100),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,

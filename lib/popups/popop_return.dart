@@ -31,7 +31,7 @@ class PopUpReturn extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             content: Container(
-              width: 520.sp,
+              // width: 520.sp,
               color: Color(0xFFD2E3F7),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,

@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_phosphor_icons/flutter_phosphor_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lottie/lottie.dart';
 
 class PopupLoginuser extends StatefulWidget {
   final String nome;
@@ -53,15 +53,17 @@ class _PopupLoginuserState extends State<PopupLoginuser> {
     return mensagens[_random.nextInt(mensagens.length)];
   }
 
-  IconData getIcon() {
+  String getIcon() {
     final horaAtual = DateTime.now().hour;
 
     if (horaAtual >= 5 && horaAtual < 12) {
-      return Icons.light_mode; // Ícone para o dia
+      return "lib/assets/sol_dia.json";
+      // Icons.light_mode; // Ícone para o dia
     } else if (horaAtual >= 12 && horaAtual < 18) {
-      return PhosphorIcons.cloud_sun_fill; // Ícone para a tarde
+      return "lib/assets/sol_meio-dia.json"; // Ícone para a tarde
     } else {
-      return PhosphorIcons.moon_stars_fill; // Ícone para a noite
+      return "lib/assets/lua_noite.json";
+      // PhosphorIcons.moon_stars_fill; // Ícone para a noite
     }
   }
 
@@ -77,35 +79,31 @@ class _PopupLoginuserState extends State<PopupLoginuser> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          content: Expanded(
-            child: Container(
-              // width: 520.sp,
-              color: Color(0xFF01244E),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Container(
-                    height: 25.sp,
-                    width: 25.sp,
-                    child: Icon(
-                      getIcon(),
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 15.sp),
-                  Flexible(
-                    child: Text(
-                      getSaudacao(),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18.sp,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w400,
+          content: Container(
+            color: Color(0xFF01244E),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Container(
+                  height: 25.sp,
+                  width: 25.sp,
+                  child: Lottie.asset(getIcon()
+                      // 'lib/assets/sol_meio-dia.json'
                       ),
+                ),
+                SizedBox(width: 15.sp),
+                Flexible(
+                  child: Text(
+                    getSaudacao(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18.sp,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

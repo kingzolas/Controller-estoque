@@ -441,7 +441,7 @@ class _AddMemberProductsState extends State<AddMemberProducts> {
               'Quant. Retirada ',
               style: TextStyle(
                 color: Color(0xFF889BB2),
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.w400,
                 height: 0,

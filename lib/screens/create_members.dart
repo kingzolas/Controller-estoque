@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_phosphor_icons/flutter_phosphor_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:lottie/lottie.dart';
 import 'package:velocityestoque/widgets/alert_dialog_product.dart';
 import 'package:velocityestoque/screens/config_menber.dart';
 import 'package:velocityestoque/models/member_model.dart';
+import 'package:velocityestoque/widgets/config_member.dart';
 import '../baseConect.dart';
 import '../models/movimentacao_model.dart';
+import '../services/products_services.dart';
 import '../widgets/cardMember.dart';
 
 class CreateMemberPage extends StatefulWidget {
@@ -28,27 +32,75 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
       TextEditingController(); // Controlador para a busca
 
   String? selectedOffice; // Para rastrear a profissão selecionada
+  final ProductServices _productServices =
+      ProductServices('ws://${Socket.apiUrl}');
+  bool isLoading = true;
 
-  Future<void> fetchMembers() async {
-    final url = Uri.parse('${Config.apiUrl}/api/members//');
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+    });
+
     try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final List<dynamic> memberData = jsonDecode(response.body);
-        setState(() {
-          members =
-              memberData.map((json) => MemberModel.fromJson(json)).toList();
-          filteredmembers =
-              members; // Inicializa a lista filtrada com todos os membros
-        });
-      } else {
-        print(
-            'Erro ao buscar membros: ${response.statusCode} - ${response.body}');
-        throw Exception('Failed to load members');
-      }
+      // Apenas inicializa a conexão e busca os membros uma vez
+      await _productServices.fetchMembers();
+
+      // Carrega os membros iniciais com o WebSocket
+      final memberList = await _productServices.fetchMembers();
+      setState(() {
+        members = memberList;
+        filteredmembers =
+            members; // Inicializa a lista filtrada com todos os membros
+      });
+
+      // Chama o método _startListeningForUpdates após sua declaração
+      _startListeningForUpdates();
     } catch (e) {
-      print('Erro: $e');
+      print('Erro ao carregar dados: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+// Função para começar a escutar as atualizações via WebSocket
+  void _startListeningForUpdates() {
+    _productServices.listenForMemberUpdates((memberId, updatedData) {
+      setState(() {
+        // Encontre o índice do membro e atualize os campos necessários
+        int index = members.indexWhere((member) => member.id == memberId);
+        if (index != -1) {
+          // Atualiza os campos específicos do membro (não substitui o membro inteiro)
+          members[index] = MemberModel(
+            id: memberId,
+            name: updatedData['name'] ??
+                members[index].name, // Se 'name' for null, mantém o valor atual
+            office: updatedData['office'] ??
+                members[index]
+                    .office, // Se 'office' for null, mantém o valor atual
+            isActive: updatedData['isActive'] ??
+                members[index]
+                    .isActive, // Se 'isActive' for null, mantém o valor atual
+            profileImage: updatedData['profileImage'] ??
+                members[index]
+                    .profileImage, // Se 'profileImage' for null, mantém o valor atual
+          );
+        } else {
+          // Se o membro não estiver na lista, adiciona ele com as novas informações
+          members.add(MemberModel(
+            id: memberId,
+            name: updatedData['name'] ??
+                '', // Fornece valor default se 'name' for null
+            office: updatedData['office'] ??
+                '', // Fornece valor default se 'office' for null
+            isActive: updatedData['isActive'], // Valor booleano
+            profileImage: updatedData['profileImage'] ??
+                '', // Fornece valor default se 'profileImage' for null
+          ));
+        }
+      });
+    });
   }
 
   Future<Map<String, int>> fetchMovimentacoes(String membroId) async {
@@ -104,7 +156,8 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
   @override
   void initState() {
     super.initState();
-    fetchMembers();
+    _loadData();
+    // fetchMembers();
     _searchController.addListener(() {
       filterMembers(
           name: _searchController.text); // Atualiza a filtragem por nome
@@ -343,37 +396,51 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                   SizedBox(height: 10),
                   // Lista de membros filtrados
                   Expanded(
-                    child: GridView.builder(
-                      scrollDirection: Axis.vertical,
-                      shrinkWrap: true,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 5,
-                        childAspectRatio: 0.69,
-                        crossAxisSpacing: 5.sp,
-                        mainAxisSpacing: 1.sp,
-                      ),
-                      itemCount: filteredmembers.length,
-                      itemBuilder: (context, index) {
-                        final ValueNotifier<bool> showFrontSide =
-                            ValueNotifier(true);
+                    child: isLoading
+                        ? Center(
+                            child: Lottie.asset("lib/assets/load_perfil.json",
+                                height: 300.sp, width: 300.sp),
+                          )
+                        : filteredmembers.isEmpty
+                            ? Text(
+                                'Nenhuma membro encontrado',
+                                style: TextStyle(
+                                    color: Color(0xff768AA1),
+                                    fontSize: 30.sp,
+                                    fontWeight: FontWeight.w500),
+                              )
+                            : GridView.builder(
+                                scrollDirection: Axis.vertical,
+                                shrinkWrap: true,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 5,
+                                  childAspectRatio: 0.69,
+                                  crossAxisSpacing: 5.sp,
+                                  mainAxisSpacing: 1.sp,
+                                ),
+                                itemCount: filteredmembers.length,
+                                itemBuilder: (context, index) {
+                                  final ValueNotifier<bool> showFrontSide =
+                                      ValueNotifier(true);
 
-                        return Carduser(
-                            ontap: () {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialogProduct(
-                                    membro: filteredmembers[index],
-                                  );
+                                  return Carduser(
+                                      ontap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialogProduct(
+                                              membro: filteredmembers[index],
+                                            );
+                                          },
+                                        );
+                                      },
+                                      membro: filteredmembers[index],
+                                      key: ValueKey(
+                                          "front_${filteredmembers[index].id}"));
                                 },
-                              );
-                            },
-                            membro: filteredmembers[index],
-                            key:
-                                ValueKey("front_${filteredmembers[index].id}"));
-                      },
-                    ),
-                  )
+                              ),
+                  ),
                 ],
               ),
             ),
@@ -447,6 +514,7 @@ class _CarduserState extends State<Carduser> {
                           borderRadius: BorderRadius.all(Radius.circular(10)),
                         ),
                         child: Stack(
+                          alignment: Alignment.center,
                           children: [
                             ClipRect(
                               child: widget.membro.profileImage != null &&
@@ -455,42 +523,123 @@ class _CarduserState extends State<Carduser> {
                                       widget.membro.profileImage.toString(),
                                       fit: BoxFit.cover,
                                     )
-                                  : Center(
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 50.sp, // Tamanho do ícone
-                                        color: Color(0xFFADBFD4),
-                                      ),
+                                  : Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Center(
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 50.sp, // Tamanho do ícone
+                                            color: Color(0xFFADBFD4),
+                                          ),
+                                        ),
+                                        Text(
+                                          widget.membro.name,
+                                          style: TextStyle(
+                                            color: Color(0xff01244E),
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        Text(
+                                          widget.membro.office,
+                                          style: TextStyle(
+                                            color: Color(0xff01244E),
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                             ),
-                            if (_isHovering)
+                            // Se o membro estiver inativo, mostrar a sobreposição e o cadeado
+                            if (!(widget.membro.isActive ?? true))
                               Container(
+                                width: double.infinity,
                                 height: 230.sp,
                                 decoration: BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10)),
-                                    color: Colors.black.withOpacity(0.5)),
-                              ),
-                            if (_isHovering)
-                              Center(
-                                child: Container(
-                                  height: 30.sp,
-                                  width: 130.sp,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xffFEB100),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      "Ver histórico de atividade",
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10)),
+                                  color: Colors.black.withOpacity(
+                                      0.5), // Sobreposição escurecida
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.lock,
+                                      size: 40.sp, // Tamanho do cadeado
+                                      color: Colors
+                                          .white, // Cor do ícone de cadeado
+                                    ),
+                                    Text(
+                                      "Inativo",
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Colors.white, // Cor do texto
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            // Condicional para o botão de "Ver histórico de atividade"
+                            if (_isHovering)
+                              Stack(
+                                children: [
+                                  Container(
+                                    height: 230.sp,
+                                    decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10)),
+                                        color: Colors.black.withOpacity(0.5)),
+                                    child: Center(
+                                      child: Container(
+                                        height: 30.sp,
+                                        width: 130.sp,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xffFEB100),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            "Ver histórico de atividade",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 10.sp,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  Align(
+                                    alignment: Alignment.bottomRight,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10.0),
+                                      child: IconButton(
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return ConfiguereMember(
+                                                membro: widget.membro,
+                                              );
+                                            },
+                                          );
+                                        },
+                                        icon: Icon(
+                                          PhosphorIcons.gear_fill,
+                                          color: Colors.white,
+                                          size: 20.sp,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),

@@ -6,6 +6,7 @@ class AuthProvider with ChangeNotifier {
   String? _email;
   String? _token; // Adicione esta linha para armazenar o token
   String? _oficcer;
+  bool get isAuthenticated => _userId != null;
 
   void login(String userId, String userName, String email, String token,
       String oficcer) {

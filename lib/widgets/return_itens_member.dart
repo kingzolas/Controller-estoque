@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/models/movimentacao_model.dart';
-
+import 'package:http/http.dart' as http;
 import '../models/auth_provider.dart';
 import '../models/member_model.dart';
 import '../models/product_model.dart';
 import '../popups/popop_return.dart';
 import '../services/products_services.dart';
+import 'alert_dialog_erro_devolucao.dart';
 
 class ReturnItensMember extends StatefulWidget {
   final MovimentacaoModel produto;
@@ -124,6 +126,8 @@ class _ReturnItensMemberState extends State<ReturnItensMember> {
 
   @override
   Widget build(BuildContext context) {
+    final int quantidadeTotal =
+        widget.produto.Quantidade - widget.produto.quantidadeDevolvidaAcumulada;
     final authProvider = Provider.of<AuthProvider>(context);
     return ScreenUtilInit(
       designSize: const Size(1920, 1080),
@@ -161,10 +165,8 @@ class _ReturnItensMemberState extends State<ReturnItensMember> {
                         ])),
                       ),
                       InkWell(
-                        onTap: () {
+                        onTap: () async {
                           final descricao = _descriptionController.text.trim();
-                          final quantity =
-                              int.tryParse(_quantityController.text) ?? 0;
 
                           if (descricao.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -176,23 +178,56 @@ class _ReturnItensMemberState extends State<ReturnItensMember> {
 
                             return;
                           }
-                          showCustomPopup(context, widget.membro.id);
-                          print({
-                            'quantity': quantity,
-                            'userId': authProvider.userId.toString(),
-                            'descricao': descricao,
-                            'membroId': widget.membro.id,
-                            'idMovimentacao': widget.produto.idMovimentacao,
-                            'status': _selectedStatus
-                          });
 
-                          _productServices.returnProduct(
-                              quantity,
-                              authProvider.userId.toString(),
-                              descricao,
-                              widget.membro.id,
-                              widget.produto.idMovimentacao,
-                              _selectedStatus);
+                          final quantity =
+                              int.tryParse(_quantityController.text) ?? 0;
+
+                          http.Response response =
+                              await _productServices.returnProduct(
+                                  quantity,
+                                  authProvider.userId.toString(),
+                                  descricao,
+                                  widget.membro.id,
+                                  widget.produto.idMovimentacao,
+                                  _selectedStatus);
+                          // print(response.body);
+                          print(response.statusCode);
+
+                          if (response.statusCode == 401 ||
+                              response.statusCode == 400 ||
+                              response.statusCode == 500) {
+                            showDialog(
+                                barrierColor: Colors.transparent,
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialogErroDevolucao(
+                                    ontapFalse: () {
+                                      Navigator.pop(context);
+                                      Navigator.pop(
+                                          context); // Fecha a rota atual
+                                    },
+                                    ontapTrue: () {
+                                      Navigator.pop(context);
+                                    },
+                                    quantidade: quantidadeTotal.toString(),
+                                    name: widget.produto.Produto,
+                                  );
+                                });
+                          }
+                          if (response.statusCode == 200 ||
+                              response.statusCode == 201) {
+                            showCustomPopup(context, widget.membro.id);
+                            Navigator.pop(context);
+                          }
+
+                          // print({
+                          //   'quantity': quantity,
+                          //   'userId': authProvider.userId.toString(),
+                          //   'descricao': descricao,
+                          //   'membroId': widget.membro.id,
+                          //   'idMovimentacao': widget.produto.idMovimentacao,
+                          //   'status': _selectedStatus
+                          // });
                         },
                         child: Container(
                           width: 160.sp,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
+import 'package:popover/popover.dart';
 import 'package:velocityestoque/models/marcas_model.dart';
 import 'package:velocityestoque/provider/productController.dart';
 import 'package:velocityestoque/screens/historic_products.dart';
@@ -57,6 +59,64 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
         return matchesName && matchesCategory;
       }).toList();
     });
+  }
+
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonHideUnderline(
+      child: DropdownButton2(
+        isExpanded: true,
+        hint: Text(
+          'Filtrar categoria',
+          style: TextStyle(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.white),
+        ),
+        items: _categories.map((category) {
+          return DropdownMenuItem<String>(
+            value: category['id'].toString(),
+            child: Text(
+              category['name'],
+              style: TextStyle(
+                  fontSize: 23.sp,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList(),
+        value: selectedCategory,
+        onChanged: (value) {
+          setState(() {
+            selectedCategory = value as String?;
+          });
+          filterProducts();
+        },
+        buttonStyleData: ButtonStyleData(
+          height: 50.sp,
+          width: 240.sp,
+          decoration: BoxDecoration(
+              color: Color(0xff01244E),
+              borderRadius: BorderRadius.circular(10)),
+          padding: EdgeInsets.symmetric(horizontal: 16.sp),
+        ),
+        iconStyleData: IconStyleData(
+          icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+          iconSize: 24.sp,
+        ),
+        dropdownStyleData: DropdownStyleData(
+          maxHeight: 200.sp,
+          width: 400,
+          decoration: BoxDecoration(
+              color: Color(0xff01244E),
+              borderRadius: BorderRadius.circular(10)),
+        ),
+        menuItemStyleData: MenuItemStyleData(
+          height: 48.sp,
+          padding: EdgeInsets.symmetric(horizontal: 16.sp),
+        ),
+      ),
+    );
   }
 
   @override
@@ -240,49 +300,53 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                         SizedBox(
                           width: 20.sp,
                         ),
-                        _containerAction(
-                          text: "Adicionar produto",
-                          icon: Icons.add_circle_outline,
-                          color: Color(0xffFEB100),
-                          ontap: () {
-                            showDialog(
-                                barrierColor: Colors.transparent,
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AddMemberProducts(
-                                    membro: widget.membro,
-                                  );
-                                });
-                          },
-                        ),
+                        widget.membro.isActive == true
+                            ? _containerAction(
+                                text: "Adicionar produto",
+                                icon: Icons.add_circle_outline,
+                                color: Color(0xffFEB100),
+                                ontap: () {
+                                  showDialog(
+                                      barrierColor: Colors.transparent,
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AddMemberProducts(
+                                          membro: widget.membro,
+                                        );
+                                      });
+                                },
+                              )
+                            : Container(),
                         SizedBox(
                           width: 10.sp,
                         ),
-                        TooltipTheme(
-                          data: TooltipThemeData(
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            textStyle: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                            padding: EdgeInsets.all(8),
-                            preferBelow: false,
-                            verticalOffset: 20,
-                            showDuration: Duration(seconds: 2),
-                          ),
-                          child: Tooltip(
-                            message:
-                                'Ao clicar em adicionar produto, você poderá adicionar um novo produto no histórico de retirada e atividade deste usuário.',
-                            child: Icon(
-                              Icons.info_outline_rounded,
-                              size: 40,
-                              color: Color(0xffFEB100),
-                            ),
-                          ),
-                        ),
+                        widget.membro.isActive == true
+                            ? TooltipTheme(
+                                data: TooltipThemeData(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  textStyle: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                  padding: EdgeInsets.all(8),
+                                  preferBelow: false,
+                                  verticalOffset: 20,
+                                  showDuration: Duration(seconds: 2),
+                                ),
+                                child: Tooltip(
+                                  message:
+                                      'Ao clicar em adicionar produto, você poderá adicionar um novo produto no histórico de retirada e atividade deste usuário.',
+                                  child: Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 40,
+                                    color: Color(0xffFEB100),
+                                  ),
+                                ),
+                              )
+                            : Container()
                       ],
                     ),
                     SizedBox(
@@ -353,7 +417,25 @@ class _AlertDialogProductState extends State<AlertDialogProduct> {
                           ),
                         ),
                         child: filteredProducts.isEmpty
-                            ? Center(child: CircularProgressIndicator())
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Lottie.asset(
+                                        'lib/assets/animacao_user.json'),
+                                    SizedBox(
+                                      height: 50.sp,
+                                    ),
+                                    Text(
+                                      'Nenhuma movimentação registrada',
+                                      style: TextStyle(
+                                          color: Color(0xff768AA1),
+                                          fontSize: 30.sp,
+                                          fontWeight: FontWeight.w500),
+                                    )
+                                  ],
+                                ),
+                              )
                             : ListView.builder(
                                 itemCount: filteredProducts.length,
                                 itemBuilder: (context, index) {
@@ -390,6 +472,49 @@ String formatarData(String dataISO) {
 }
 
 class _CeduleproductState extends State<Ceduleproduct> {
+  Widget _buildContainer(String statusMovimentacao) {
+    return statusMovimentacao == 'Devolvido'
+        ? _containerCelulaActionView(
+            // ontap: () {
+            //   showPopover(
+
+            //       barrierColor: Colors.transparent,
+            //       context: context,
+            //       bodyBuilder: (context) {
+            //         return Container(
+            //           height: 30.sp,
+            //           width: 200.sp,
+            //           color: Colors.amber,
+            //         );
+            //       });
+            // },
+            context: context,
+            bordertopleft: 0,
+            borderTopRight: 0,
+            borderbottomRight: 0,
+            borderbottomLeft: 0,
+            borderColor: Colors.transparent,
+            widthlarge: 1)
+        : _containerCelulaAction(
+            ontap: () {
+              showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return ReturnItensMember(
+                      membro: widget.membro,
+                      produto: widget.product,
+                    );
+                  });
+            },
+            context: context,
+            bordertopleft: 0,
+            borderTopRight: 0,
+            borderbottomRight: 0,
+            borderbottomLeft: 0,
+            borderColor: Colors.transparent,
+            widthlarge: 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final int quantidadeReal =
@@ -461,24 +586,26 @@ class _CeduleproductState extends State<Ceduleproduct> {
                         borderColor: Color.fromARGB(255, 40, 40, 41),
                         texto: formatarData(widget.product.dataMovimentacao),
                         widthlarge: 1),
-                    _containerCelulaAction(
-                        ontap: () {
-                          showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return ReturnItensMember(
-                                  membro: widget.membro,
-                                  produto: widget.product,
-                                );
-                              });
-                        },
-                        context: context,
-                        bordertopleft: 0,
-                        borderTopRight: 0,
-                        borderbottomRight: 0,
-                        borderbottomLeft: 0,
-                        borderColor: Colors.transparent,
-                        widthlarge: 1),
+                    _buildContainer(widget.product.statusMovimentacao)
+
+                    // _containerCelulaAction(
+                    //     ontap: () {
+                    //       showDialog(
+                    //           context: context,
+                    //           builder: (BuildContext context) {
+                    //             return ReturnItensMember(
+                    //               membro: widget.membro,
+                    //               produto: widget.product,
+                    //             );
+                    //           });
+                    //     },
+                    //     context: context,
+                    //     bordertopleft: 0,
+                    //     borderTopRight: 0,
+                    //     borderbottomRight: 0,
+                    //     borderbottomLeft: 0,
+                    //     borderColor: Colors.transparent,
+                    //     widthlarge: 1),
                   ],
                 ),
                 Container(
@@ -680,6 +807,81 @@ Widget _containerCelulaAction(
                         color: Color.fromARGB(255, 255, 255, 255),
                         fontSize: 24.sp,
                         fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _containerCelulaActionView({
+  required double bordertopleft,
+  required double borderTopRight,
+  required double borderbottomRight,
+  required double borderbottomLeft,
+  required Color borderColor,
+  required BuildContext context,
+  required int widthlarge,
+}) {
+  return Expanded(
+    flex: widthlarge,
+    child: GestureDetector(
+      onTap: () {
+        showPopover(
+          context: context,
+          bodyBuilder: (context) => Stack(
+            children: [
+              Positioned(
+                left: 30,
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  child: Text('Conteúdo do Popover'),
+                ),
+              ),
+            ],
+          ),
+          onPop: () => print('Popover fechado'),
+          direction: PopoverDirection.left,
+          width: 200,
+          height: 100,
+          arrowHeight: 10,
+          arrowWidth: 20,
+        );
+      },
+      child: Container(
+        height: 52.sp,
+        decoration: BoxDecoration(
+          color: Color(0xffDBE1E9),
+          border: Border(
+            right: BorderSide(color: borderColor, width: 0.3),
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(bordertopleft),
+            topRight: Radius.circular(borderTopRight),
+            bottomLeft: Radius.circular(borderbottomLeft),
+            bottomRight: Radius.circular(borderbottomRight),
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: 5, bottom: 5),
+            child: Container(
+              width: 150.sp,
+              decoration: BoxDecoration(
+                color: Color(0xff4CC67A),
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+              child: Center(
+                child: Text(
+                  'Ver',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 255, 255, 255),
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

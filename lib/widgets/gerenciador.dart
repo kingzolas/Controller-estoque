@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:velocityestoque/widgets/dashboardScreen.dart';
 import 'package:velocityestoque/widgets/productRegistrationPage.dart';
 // import 'package:velocityestoque/productRegistrationPage.dart';
 import 'package:velocityestoque/screens/create_category.dart';
@@ -13,15 +14,7 @@ import 'package:velocityestoque/screens/produtos.dart';
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.grey,
-      child: Center(
-        child: Text(
-          'Tela em desenvolvimento',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
-    );
+    return Dashboardscreen();
   }
 }
 

@@ -130,9 +130,10 @@ class _ConfigMemberState extends State<ConfigMember> {
       if (response.statusCode == 201) {
         print(_nameController.text);
         showCustomPopup(context, _nameController.text);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Membro criado com sucesso!')),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Membro criado com sucesso!')),
+        // );
+        Navigator.pop(context);
 
         _nameController.clear();
         _officeController.clear();
@@ -299,8 +300,8 @@ class _ConfigMemberState extends State<ConfigMember> {
   Widget _buildTextField(
       TextEditingController controller, String errorMessage) {
     return Container(
-      width: 625,
-      height: 59,
+      width: 625.sp,
+      height: 59.sp,
       decoration: ShapeDecoration(
         color: const Color(0xFFF0F4F8),
         shape: RoundedRectangleBorder(
@@ -309,7 +310,8 @@ class _ConfigMemberState extends State<ConfigMember> {
       ),
       child: TextFormField(
         controller: controller,
-        decoration: const InputDecoration(labelText: ''),
+        decoration:
+            const InputDecoration(labelText: '', border: InputBorder.none),
         validator: (value) {
           if (value == null || value.isEmpty) {
             return errorMessage;

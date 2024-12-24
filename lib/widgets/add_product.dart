@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/models/user_model.dart';
 import 'package:velocityestoque/popups/popup_addProduct.dart';
@@ -120,9 +122,10 @@ class _AddProductState extends State<AddProduct> {
             .updateDamagedProductQuantity(
                 widget.produto.id, quantity, userId, 'ENTRADA', marca);
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Produto atualizado com sucesso!')),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Produto atualizado com sucesso!')),
+      // );
+      // Navigator.pop(context);
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao atualizar produto: $error')),
@@ -178,16 +181,56 @@ class _AddProductState extends State<AddProduct> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            final int quantity =
-                                int.tryParse(_quantityController.text) ?? 0;
-                            if (true) {
-                              final String userId = authProvider.userId ?? '';
-                              _addProduct(
-                                  userId: userId, marca: widget.produto.marca);
-                              showCustomPopup(
-                                  context, widget.produto.name, quantity);
-                            }
+                          onTap: () async {
+                            try {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (BuildContext context) {
+                                  return Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          height: 100,
+                                          child: Lottie.asset(
+                                              'lib/assets/add_item.json',
+                                              delegates:
+                                                  LottieDelegates(values: [
+                                                ValueDelegate.color(
+                                                    const ["***", "Fill 1"],
+                                                    value: Colors.pink)
+                                              ])),
+                                        ),
+                                        Text(
+                                          'Atualizando informações...',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+
+                              final int quantity =
+                                  int.tryParse(_quantityController.text) ?? 0;
+                              if (true) {
+                                final String userId = authProvider.userId ?? '';
+                                await _addProduct(
+                                    userId: userId,
+                                    marca: widget.produto.marca);
+
+                                await Future.delayed(Duration(seconds: 2));
+                                Navigator.of(context).pop();
+                                Navigator.pop(context);
+
+                                showCustomPopup(
+                                    context, widget.produto.name, quantity);
+                              }
+                            } catch (error) {}
                           },
                           // _addProduct, // Chama a função ao clicar em "Adicionar"
                           child: Container(

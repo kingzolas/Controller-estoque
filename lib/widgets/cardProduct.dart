@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lottie/lottie.dart';
 
 import '../models/product_model.dart';
 
-class Cardproduct extends StatelessWidget {
+class Cardproduct extends StatefulWidget {
   final Product product;
   final String status;
   final int quantity;
   final int totalQuantity;
   final GestureTapCallback ontap;
+  final GestureTapCallback edit;
 
   const Cardproduct({
     super.key,
+    required this.edit,
     required this.ontap,
     required this.product,
     required this.status,
@@ -20,9 +23,42 @@ class Cardproduct extends StatelessWidget {
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  _CardproductState createState() => _CardproductState();
+}
+
+class _CardproductState extends State<Cardproduct>
+    with TickerProviderStateMixin {
+  late AnimationController _editController;
+  late AnimationController _addController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Inicializando os controladores de animação
+    _editController = AnimationController(
+      vsync: this,
+      duration: const Duration(
+          seconds: 1), // Durarão 1 segundo ou o tempo que você preferir
+    );
+
+    _addController = AnimationController(
+      vsync: this,
+      duration: const Duration(
+          seconds: 1), // Durarão 1 segundo ou o tempo que você preferir
+    );
+  }
+
+  @override
+  void dispose() {
+    // Libere os controladores de animação ao finalizar
+    _editController.dispose();
+    _addController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: const Size(1920, 1080),
       minTextAdapt: true,
@@ -40,6 +76,7 @@ class Cardproduct extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+                // Informações do Produto
                 Container(
                   height: 70.sp,
                   width: 350.sp,
@@ -48,7 +85,7 @@ class Cardproduct extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product.name,
+                        widget.product.name,
                         style: TextStyle(
                           color: Color(0xFF68798D),
                           overflow: TextOverflow.ellipsis,
@@ -57,7 +94,7 @@ class Cardproduct extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        product.marca,
+                        widget.product.marca,
                         style: TextStyle(
                           color: Color(0xFF889BB2),
                           fontSize: 20.sp,
@@ -68,20 +105,21 @@ class Cardproduct extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Status do Produto
                 Container(
                     height: 70,
                     width: 200,
-                    // color: Colors.amber,
                     child: Align(
                         alignment: Alignment.centerLeft,
-                        child: containerStatus(status: status))),
+                        child: containerStatus(status: widget.status))),
+                // Categoria
                 Container(
                   height: 70.sp,
                   width: 350.sp,
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      product.category,
+                      widget.product.category,
                       style: TextStyle(
                         color: Color(0xFF889BB2),
                         fontSize: 20.sp,
@@ -93,14 +131,13 @@ class Cardproduct extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Quantidades
                 Container(
-                  // color: Colors.amber,
                   width: 220.sp,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Quantidade total
                       Text.rich(
                         TextSpan(
                           children: [
@@ -115,7 +152,7 @@ class Cardproduct extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: totalQuantity.toString(),
+                              text: widget.totalQuantity.toString(),
                               style: TextStyle(
                                 color: Color(0xFF68798D),
                                 fontSize: 20.sp,
@@ -127,13 +164,12 @@ class Cardproduct extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // Quantidade específica do estado (Novo, Usado ou Danificado)
                       Text.rich(
                         TextSpan(
                           children: [
                             TextSpan(
                               text:
-                                  'Quant. ${status == 'novo' ? 'Novos' : status == 'usado' ? 'Usados' : 'Danificados'} | ',
+                                  'Quant. ${widget.status == 'novo' ? 'Novos' : widget.status == 'usado' ? 'Usados' : 'Danificados'} | ',
                               style: TextStyle(
                                 color: Color(0xFF889BB2),
                                 fontSize: 19.sp,
@@ -143,7 +179,7 @@ class Cardproduct extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: quantity.toString(),
+                              text: widget.quantity.toString(),
                               style: TextStyle(
                                 color: Color(0xFF68798D),
                                 fontSize: 19.sp,
@@ -158,12 +194,92 @@ class Cardproduct extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                    onPressed: ontap,
-                    icon: Icon(
-                      Icons.add,
-                      color: Color(0xff4CC67A),
-                    ))
+                // Botões
+                Row(
+                  children: [
+                    MouseRegion(
+                      onEnter: (_) {
+                        setState(() {
+                          _editController
+                              .repeat(); // Inicia a animação ao passar o mouse
+                        });
+                      },
+                      onExit: (_) {
+                        setState(() {
+                          _editController
+                              .reset(); // Reseta a animação ao retirar o mouse
+                        });
+                      },
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(50),
+                          onTap: widget.edit,
+                          child: Container(
+                            height: 50.sp,
+                            width: 50.sp,
+                            alignment: Alignment.center,
+                            child: Lottie.asset(
+                              'lib/assets/pencil_6454112.json',
+                              height: 30.sp,
+                              width: 30.sp,
+                              controller: _editController,
+                              repeat:
+                                  false, // Impede que repita automaticamente
+                              animate: _editController
+                                  .isAnimating, // Controla a animação com o controller
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Botão de adição
+                    MouseRegion(
+                      onEnter: (_) {
+                        setState(() {
+                          _addController
+                              .repeat(); // Inicia a animação ao passar o mouse
+                        });
+                      },
+                      onExit: (_) {
+                        setState(() {
+                          _addController
+                              .reset(); // Reseta a animação ao retirar o mouse
+                        });
+                      },
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(50),
+                          onTap: widget.ontap,
+                          child: Container(
+                            height: 50.sp,
+                            width: 50.sp,
+                            alignment: Alignment.center,
+                            child: Lottie.asset(
+                              'lib/assets/add_16046411.json',
+                              height: 50.sp,
+                              width: 50.sp,
+                              controller: _addController,
+                              repeat:
+                                  false, // Impede que repita automaticamente
+                              animate: _addController
+                                  .isAnimating, // Controla a animação com o controller
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // IconButton(
+                    //   onPressed: widget.ontap,
+                    //   icon: Icon(
+                    //     Icons.add,
+                    //     color: Color(0xff4CC67A),
+                    //   ),
+                    // ),
+                  ],
+                ),
               ],
             ),
           ),

@@ -1,22 +1,21 @@
-// class MemberModel {
-//   final String name;
-//   final String fabricante;
-//   final String id;
-//   // final String? profileImage;
+class MarcasModel {
+  final String name;
+  final String fabricante;
+  final String id;
 
-//   MemberModel({
-//     required this.name,
-//     required this.fabricante,
-//     required this.id,
-//     // this.profileImage,
-//   });
+  MarcasModel({
+    required this.name,
+    required this.fabricante,
+    required this.id,
+  });
 
-//   factory MemberModel.fromJson(Map<String, dynamic> json) {
-//     return MemberModel(
-//       name: json['name'] as String,
-//       fabricante: json['fabricante'] as String,
-//       id: json['_id'],
-//       // profileImage: json['profileImage'] as String?,
-//     );
-//   }
-// }
+  factory MarcasModel.fromJson(Map<String, dynamic> json) {
+    return MarcasModel(
+      name: json['name'] != null ? json['name'] as String : "Desconhecido",
+      fabricante: json['fabricante'] != null
+          ? json['fabricante'] as String
+          : "Desconhecido",
+      id: json['_id'] as String, // Certifique-se de usar '_id' aqui.
+    );
+  }
+}

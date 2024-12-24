@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:velocityestoque/models/auth_provider.dart';
+import 'package:velocityestoque/models/marcas_model.dart';
 
 import '../baseConect.dart';
 import '../popups/popup_createProduct.dart';
@@ -25,7 +26,7 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
   String? _selectedMarcaId;
   String? _selectedCategoryId; // Armazena o ID da categoria selecionada
   String? _selectedUnit;
-  List<Map<String, dynamic>> _marcas = []; // Mapeia marcas
+  List<MarcasModel> _marcas = []; // Mapeia marcas
   List<Map<String, dynamic>> _categories = []; // Mapeia categorias
   final List<String> _units = ['Unidade', 'Kg', 'Litros', 'Caixas'];
   final ProductServices _productServices =
@@ -216,8 +217,8 @@ class _ProductRegistrationPageState extends State<ProductRegistrationPage> {
                 value: _selectedMarcaId,
                 items: _marcas.map((marca) {
                   return DropdownMenuItem(
-                    value: marca['id'], // Usando ID da categoria
-                    child: Text(marca['name']),
+                    value: marca.id, // Usando ID da categoria
+                    child: Text(marca.name),
                   );
                 }).toList(),
                 decoration: InputDecoration(
