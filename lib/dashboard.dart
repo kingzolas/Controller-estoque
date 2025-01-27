@@ -65,7 +65,7 @@ class _DashboardState extends State<Dashboard> {
   // bool _isConnected = false; // Controle de conexão
 
   // Função para inicializar o WebSocket
-  void _connectWebSocket() {
+  void connectWebSocket() {
     channel = WebSocketChannel.connect(
       Uri.parse('ws://${Socket.apiUrl}'),
     );
@@ -138,7 +138,7 @@ class _DashboardState extends State<Dashboard> {
     // channel.stream.listen((message) {
     //   _handleWebSocketMessage(message);
     // });
-    _connectWebSocket(); // Conecta ao WebSocket na inicialização
+    connectWebSocket(); // Conecta ao WebSocket na inicialização
   }
 
   bool hasNewMovement =

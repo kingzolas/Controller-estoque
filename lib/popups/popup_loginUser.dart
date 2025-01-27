@@ -75,12 +75,15 @@ class _PopupLoginuserState extends State<PopupLoginuser> {
       splitScreenMode: true,
       builder: (context, child) {
         return AlertDialog(
-          backgroundColor: Color(0xFF01244E),
+          shadowColor: Colors.black,
+          backgroundColor: Color.fromARGB(255, 255, 255, 255),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           content: Container(
-            color: Color(0xFF01244E),
+            decoration: BoxDecoration(
+              color: Color.fromARGB(255, 255, 255, 255),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -96,7 +99,7 @@ class _PopupLoginuserState extends State<PopupLoginuser> {
                   child: Text(
                     getSaudacao(),
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xff01244E),
                       fontSize: 18.sp,
                       fontFamily: 'Inter',
                       fontWeight: FontWeight.w400,

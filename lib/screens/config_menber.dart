@@ -178,7 +178,7 @@ class _ConfigMemberState extends State<ConfigMember> {
             width: 1030.sp,
             height: 470.sp,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 60),
+              padding: EdgeInsets.symmetric(horizontal: 60.sp),
               child: Form(
                 key: _formKey, // Associando o formulário com a chave
                 child: Column(

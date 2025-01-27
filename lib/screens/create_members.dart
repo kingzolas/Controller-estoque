@@ -68,37 +68,41 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
   void _startListeningForUpdates() {
     _productServices.listenForMemberUpdates((memberId, updatedData) {
       setState(() {
-        // Encontre o índice do membro e atualize os campos necessários
+        // Encontre o índice do membro na lista `members` e atualize os campos necessários
         int index = members.indexWhere((member) => member.id == memberId);
         if (index != -1) {
-          // Atualiza os campos específicos do membro (não substitui o membro inteiro)
+          // Atualize os campos específicos do membro (não substitua o membro inteiro)
           members[index] = MemberModel(
             id: memberId,
-            name: updatedData['name'] ??
-                members[index].name, // Se 'name' for null, mantém o valor atual
-            office: updatedData['office'] ??
-                members[index]
-                    .office, // Se 'office' for null, mantém o valor atual
-            isActive: updatedData['isActive'] ??
-                members[index]
-                    .isActive, // Se 'isActive' for null, mantém o valor atual
-            profileImage: updatedData['profileImage'] ??
-                members[index]
-                    .profileImage, // Se 'profileImage' for null, mantém o valor atual
+            name: updatedData['name'] ?? members[index].name,
+            office: updatedData['office'] ?? members[index].office,
+            isActive: updatedData['isActive'] ?? members[index].isActive,
+            profileImage:
+                updatedData['profileImage'] ?? members[index].profileImage,
           );
+
+          // Se a imagem foi atualizada, chamamos o _loadData para forçar o recarregamento
+          if (updatedData['profileImage'] != null) {
+            _loadData(); // Recarrega os dados quando a imagem for alterada
+          }
         } else {
-          // Se o membro não estiver na lista, adiciona ele com as novas informações
+          // Se o membro não estiver na lista, adicione ele com as novas informações
           members.add(MemberModel(
             id: memberId,
-            name: updatedData['name'] ??
-                '', // Fornece valor default se 'name' for null
-            office: updatedData['office'] ??
-                '', // Fornece valor default se 'office' for null
-            isActive: updatedData['isActive'], // Valor booleano
-            profileImage: updatedData['profileImage'] ??
-                '', // Fornece valor default se 'profileImage' for null
+            name: updatedData['name'] ?? '',
+            office: updatedData['office'] ?? '',
+            isActive: updatedData['isActive'],
+            profileImage: updatedData['profileImage'] ?? '',
           ));
+
+          // Recarrega os dados se a imagem foi alterada
+          if (updatedData['profileImage'] != null) {
+            _loadData();
+          }
         }
+
+        // Reaplica a filtragem depois de atualizar os membros
+        filterMembers(office: selectedOffice, name: _searchController.text);
       });
     });
   }
@@ -143,6 +147,8 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
   void filterMembers({String? office, String? name}) {
     setState(() {
       selectedOffice = office;
+
+      // Filtrando os membros com base no escritório e nome
       filteredmembers = members.where((member) {
         final matchesOffice =
             office == null || office == "Todos" || member.office == office;
@@ -150,6 +156,17 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
             member.name.toLowerCase().contains(name.toLowerCase());
         return matchesOffice && matchesName;
       }).toList();
+
+      // Ordenando os membros para que os com isActive: false venham por último
+      filteredmembers.sort((a, b) {
+        if (a.isActive == false && b.isActive == true) {
+          return 1; // a vem depois de b
+        } else if (a.isActive == true && b.isActive == false) {
+          return -1; // a vem antes de b
+        } else {
+          return 0; // mantém a ordem
+        }
+      });
     });
   }
 
@@ -271,7 +288,7 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
         return Scaffold(
           backgroundColor: Colors.white,
           body: Padding(
-            padding: const EdgeInsets.only(left: 50.0, right: 50),
+            padding: EdgeInsets.only(left: 50.sp, right: 50.sp),
             child: Container(
               child: Column(
                 children: [
@@ -287,11 +304,11 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                   // Campo de busca por nome
                   Container(
                     width: double.infinity,
-                    height: 50,
+                    height: 50.sp,
                     decoration: ShapeDecoration(
                       color: Color(0xFFE3E8EE),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: BorderRadius.circular(5.sp),
                       ),
                     ),
                     child: Row(
@@ -322,7 +339,7 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                     children: [
                       Expanded(
                         child: Container(
-                          height: 50,
+                          height: 30.sp,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: uniqueOffices.length + 1,
@@ -368,10 +385,11 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                           decoration: ShapeDecoration(
                             color: Color(0xFFFEB100),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5)),
+                              borderRadius: BorderRadius.circular(5.sp),
+                            ),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.only(right: 30, left: 30),
+                            padding: EdgeInsets.only(right: 30.sp, left: 30.sp),
                             child: Row(
                               children: [
                                 Icon(Icons.add_box_rounded,
@@ -393,7 +411,7 @@ class _CreateMemberPageState extends State<CreateMemberPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 10.sp),
                   // Lista de membros filtrados
                   Expanded(
                     child: isLoading

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:velocityestoque/popups/popup_updatemember.dart';
@@ -88,6 +89,20 @@ class _ConfigMemberState extends State<ConfiguereMember> {
     }
   }
 
+  Future<void> _selectImage() async {
+    const XTypeGroup typeGroup = XTypeGroup(
+      label: 'images',
+      extensions: ['jpg', 'jpeg', 'png'],
+    );
+    final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+
+    if (file != null) {
+      setState(() {
+        _profileImage = File(file.path);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     bool? _selectedStatus = widget.membro.isActive;
@@ -107,7 +122,7 @@ class _ConfigMemberState extends State<ConfiguereMember> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.only(left: 40, right: 40, top: 20),
+                padding: EdgeInsets.only(left: 40.sp, right: 40.sp, top: 20.sp),
                 child: Column(
                   children: [
                     Row(
@@ -130,7 +145,8 @@ class _ConfigMemberState extends State<ConfiguereMember> {
                                   _nameController.text,
                                   _oficcerController.text,
                                   _selectedStatus!,
-                                  widget.membro.id
+                                  widget.membro.id,
+                                  _profileImage
                                   // _profileImage.toString(),
                                   );
                               showCustomPopup(context, _nameController.text);
@@ -183,48 +199,47 @@ class _ConfigMemberState extends State<ConfiguereMember> {
                     ),
                     Row(
                       children: [
-                        Container(
-                          width: 260.sp,
-                          height: 330.sp,
-                          decoration: ShapeDecoration(
-                            color: Color(0xFFF0F4F8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        InkWell(
+                          onTap: _selectImage,
+                          child: Container(
+                            width: 260.sp,
+                            height: 330.sp,
+                            decoration: ShapeDecoration(
+                              color: Color(0xFFF0F4F8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              image: _profileImage != null
+                                  ? DecorationImage(
+                                      image: FileImage(_profileImage!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
-                          ),
-                          child: ClipRect(
-                            child: widget.membro.profileImage != null &&
-                                    widget.membro.profileImage!.isNotEmpty
-                                ? Image.network(
-                                    widget.membro.profileImage.toString(),
-                                    fit: BoxFit.contain,
-                                  )
-                                : Column(
+                            child: _profileImage == null
+                                ? Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Center(
-                                        child: Icon(
-                                          Icons.person,
-                                          size: 50.sp, // Tamanho do ícone
-                                          color: Color(0xFFADBFD4),
+                                      Icon(
+                                        Icons.add_a_photo,
+                                        color: const Color(0xff889BB2),
+                                        size: 70.sp,
+                                      ),
+                                      SizedBox(height: 15.sp),
+                                      Text(
+                                        'Insira uma imagem\nde exibição para o perfil',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: const Color(0xFF889BB2),
+                                          fontSize: 15.sp,
+                                          fontFamily: 'Roboto',
+                                          fontWeight: FontWeight.w700,
+                                          height: 1,
                                         ),
                                       ),
-                                      Text(
-                                        widget.membro.name,
-                                        style: TextStyle(
-                                            color: Color(0xff01244E),
-                                            fontSize: 16.sp,
-                                            fontWeight: FontWeight.w700),
-                                      ),
-                                      Text(
-                                        widget.membro.office,
-                                        style: TextStyle(
-                                            color: Color(0xff01244E),
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w400),
-                                      ),
                                     ],
-                                  ),
+                                  )
+                                : null,
                           ),
                         ),
                         Padding(

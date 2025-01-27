@@ -28,6 +28,8 @@ class WebSocketService {
 
   // Inicializa a conexão
   void connect() {
+    if (_isConnected) return; // Impede tentativas duplicadas de conexão
+
     try {
       print("Conectando ao WebSocket...");
       _channel = WebSocketChannel.connect(Uri.parse(_url));
@@ -103,9 +105,16 @@ class WebSocketService {
   // Tenta restabelecer a conexão
   void _attemptReconnect() {
     if (_reconnectAttempts < _maxReconnectAttempts) {
-      _reconnectTimer = Timer(_reconnectInterval, () {
-        _reconnectAttempts++;
-        print("Tentando reconectar... Tentativa $_reconnectAttempts");
+      // Verifica se já existe uma tentativa de reconexão em andamento
+      if (_reconnectTimer != null && _reconnectTimer!.isActive) {
+        return; // Impede tentativas duplicadas de reconexão
+      }
+
+      _reconnectAttempts++;
+      print("Tentando reconectar... Tentativa $_reconnectAttempts");
+
+      // Aumenta o intervalo entre as tentativas a cada falha
+      _reconnectTimer = Timer(_reconnectInterval * _reconnectAttempts, () {
         connect();
       });
     } else {

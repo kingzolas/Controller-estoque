@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:mime/mime.dart';
 import 'package:velocityestoque/baseConect.dart';
 import 'package:velocityestoque/models/historicos_model.dart';
 import 'package:velocityestoque/models/marcas_model.dart';
@@ -9,15 +12,58 @@ import 'package:velocityestoque/models/movimentacao_model.dart';
 import 'package:velocityestoque/models/user_model.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
-
+import 'package:http_parser/http_parser.dart';
 import '../models/member_model.dart';
 import '../models/users_model.dart';
 
 class ProductServices {
   final WebSocketChannel channel;
+  Timer? _pingTimer;
+  static const int _pingInterval =
+      30; // Intervalo em segundos para enviar o "ping"
 
   ProductServices(String socketUrl)
-      : channel = WebSocketChannel.connect(Uri.parse(socketUrl));
+      : channel = WebSocketChannel.connect(Uri.parse(socketUrl)) {
+    // Inicia o "ping-pong" assim que a conexão for estabelecida
+    _startPingPong();
+  }
+
+  // Função para iniciar o "ping-pong"
+  void _startPingPong() {
+    _pingTimer = Timer.periodic(Duration(seconds: _pingInterval), (timer) {
+      _sendPing();
+    });
+  }
+
+  // Função para enviar o "ping"
+  void _sendPing() {
+    if (channel != null && channel.sink != null) {
+      channel.sink
+          .add(jsonEncode({'type': 'ping'})); // Envia o ping para o servidor
+      print('Ping enviado...');
+    }
+  }
+
+  // Função para escutar as respostas "pong"
+  void listenForPong() {
+    channel.stream.listen((message) {
+      try {
+        final data = jsonDecode(message);
+
+        if (data['type'] == 'pong') {
+          print('Pong recebido');
+        }
+      } catch (e) {
+        print('Erro ao processar resposta do servidor: $e');
+      }
+    });
+  }
+
+  // Função para parar o "ping-pong" quando não for mais necessário
+  void stopPingPong() {
+    _pingTimer?.cancel();
+    print('Ping-pong interrompido.');
+  }
 
   // Método para escutar as mensagens do WebSocket
   Stream<dynamic> get productStream => channel.stream;
@@ -443,28 +489,45 @@ class ProductServices {
   }
 
   Future<void> updateInfoMember(
-      String name, String oficce, bool status, String memberId,
-      {String? profileImage}) async {
+    String name,
+    String office,
+    bool status,
+    String memberId,
+    File? profileImage,
+  ) async {
     final url = '${Config.apiUrl}/api/members/$memberId';
     print(url);
-    final Map<String, dynamic> memberData = {
-      'name': name,
-      'office': oficce,
-      'isActive': status,
-      'profileImage': profileImage,
-    };
+
+    // Cria a requisição multipart
+    final request = http.MultipartRequest('PUT', Uri.parse(url));
+
+    // Adiciona os dados não relacionados à imagem
+    request.fields['name'] = name;
+    request.fields['office'] = office;
+    request.fields['isActive'] = status.toString(); // Converte bool para string
+
+    // Adiciona o arquivo da imagem, se existir
+    if (profileImage != null) {
+      final mimeType = lookupMimeType(profileImage.path);
+      if (mimeType != null) {
+        final multipartFile = await http.MultipartFile.fromPath(
+          'profileImage',
+          profileImage.path,
+          contentType: MediaType.parse(mimeType),
+        );
+        request.files.add(multipartFile);
+      }
+    }
 
     try {
-      print(memberData);
-      final response = await http.put(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(memberData),
-      );
+      // Envia a requisição
+      final response = await request.send();
+
       if (response.statusCode != 200) {
         throw Exception(
             'Erro ao atualizar informações do membro: ${response.statusCode}');
       }
+      print('Informações do membro atualizadas com sucesso!');
     } catch (error) {
       print("Erro $error");
     }
